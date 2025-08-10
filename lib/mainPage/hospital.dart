@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/auth_services.dart'; // import your AuthService
 
 class HospitalPage extends StatefulWidget {
   @override
@@ -7,6 +8,8 @@ class HospitalPage extends StatefulWidget {
 }
 
 class _HospitalPageState extends State<HospitalPage> {
+  final AuthService authService = AuthService();
+
   final List<String> filters = [
     'Emergency Available',
     'Government',
@@ -17,40 +20,49 @@ class _HospitalPageState extends State<HospitalPage> {
   final Set<String> selected = {};
   String searchQuery = '';
 
-  final List<Hospital> allHospitals = [
-    Hospital(
-      'City General Hospital',
-      ['Emergency', 'Cardiology', 'ICU'],
-      isGovernment: true,
-      twentyFourSeven: true,
-      address: '123 Medical Center Drive, Downtown',
-      distanceKm: 0.8,
-    ),
-    Hospital(
-      'St. Mary\'s Medical Center',
-      ['Maternity', 'Pediatrics', 'Surgery'],
-      isGovernment: false,
-      twentyFourSeven: true,
-      address: '456 Healthcare Boulevard, Midtown',
-      distanceKm: 1.2,
-    ),
-    Hospital(
-      'Metro Specialty Clinic',
-      ['Cardiology', 'Neurology'],
-      isGovernment: false,
-      twentyFourSeven: false,
-      address: '789 Specialist Lane, Uptown',
-      distanceKm: 2.1,
-    ),
-    Hospital(
-      'Regional Emergency Center',
-      ['Emergency', 'Trauma', 'ICU'],
-      isGovernment: true,
-      twentyFourSeven: true,
-      address: '321 Emergency Way, Southside',
-      distanceKm: 3.5,
-    ),
-  ];
+  List<Hospital> allHospitals = [];
+  bool isLoading = false;
+
+  // Replace these with your actual lat/lng or get dynamically
+  final double latitude = 28.7041;
+  final double longitude = 77.1025;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchHospitals();
+  }
+
+  Future<void> fetchHospitals() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final hospitalsJson = await authService.getNearbyHospitals(latitude, longitude);
+
+      final fetchedHospitals = hospitalsJson.map<Hospital>((json) {
+        return Hospital(
+          json['name'] ?? 'Unknown',
+          List<String>.from(json['specialties'] ?? []),
+          isGovernment: json['isGovernment'] ?? false,
+          twentyFourSeven: json['twentyFourSeven'] ?? false,
+          address: json['address'] ?? '',
+          distanceKm: (json['distanceKm'] ?? 0).toDouble(),
+        );
+      }).toList();
+
+      setState(() {
+        allHospitals = fetchedHospitals;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      print('Error fetching hospitals: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +106,9 @@ class _HospitalPageState extends State<HospitalPage> {
           },
         ),
       ),
-      body: Column(
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
@@ -140,17 +154,15 @@ class _HospitalPageState extends State<HospitalPage> {
               itemBuilder: (_, idx) {
                 final h = filtered[idx];
                 return GestureDetector(
-                  onTap: (){
-                    {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                        ),
-                        builder: (_) => HospitalDetailsSheet(hospital: h),
-                      );
-                    }
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                      ),
+                      builder: (_) => HospitalDetailsSheet(hospital: h),
+                    );
                   },
                   child: Container(
                     margin: EdgeInsets.only(bottom: 16),
@@ -232,19 +244,15 @@ class _HospitalPageState extends State<HospitalPage> {
                             if (h.specialties.contains('Emergency'))
                               Row(
                                 children: [
-                                  Icon(Icons.check_circle,
-                                      color: Colors.green, size: 16),
+                                  Icon(Icons.check_circle, color: Colors.green, size: 16),
                                   SizedBox(width: 4),
                                   Text(
                                     "Emergency",
-                                    style: TextStyle(
-                                        color: Colors.green,
-                                        fontWeight: FontWeight.w500),
+                                    style: TextStyle(color: Colors.green, fontWeight: FontWeight.w500),
                                   ),
                                 ],
                               ),
-                            if (h.specialties.contains('Emergency'))
-                              SizedBox(width: 8),
+                            if (h.specialties.contains('Emergency')) SizedBox(width: 8),
                             if (h.twentyFourSeven)
                               Container(
                                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -265,17 +273,13 @@ class _HospitalPageState extends State<HospitalPage> {
                             Container(
                               padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: h.isGovernment
-                                    ? Color(0xFFE5EDFB)
-                                    : Color(0xFFF3E8FF),
+                                color: h.isGovernment ? Color(0xFFE5EDFB) : Color(0xFFF3E8FF),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 h.isGovernment ? "Government" : "Private",
                                 style: TextStyle(
-                                  color: h.isGovernment
-                                      ? Colors.blue
-                                      : Color(0xFF9B59B6),
+                                  color: h.isGovernment ? Colors.blue : Color(0xFF9B59B6),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -313,6 +317,7 @@ class Hospital {
         required this.distanceKm,
       });
 }
+
 class HospitalDetailsSheet extends StatelessWidget {
   final Hospital hospital;
 
@@ -372,9 +377,7 @@ class HospitalDetailsSheet extends StatelessWidget {
             SizedBox(height: 12),
             Wrap(
               spacing: 6,
-              children: hospital.specialties
-                  .map((s) => Chip(label: Text(s)))
-                  .toList(),
+              children: hospital.specialties.map((s) => Chip(label: Text(s))).toList(),
             ),
             SizedBox(height: 16),
             Text(
@@ -446,4 +449,3 @@ class HospitalDetailsSheet extends StatelessWidget {
     );
   }
 }
-

@@ -174,5 +174,22 @@ class AuthService {
       throw Exception('Failed to fetch nearby hospitals');
     }
   }
+  Future<List<dynamic>> getNearbyHospitals20(double lat, double lng) async {
+    final token = await _storage.read(key: 'token');  // use your stored token key
+    final url = Uri.parse('$baseUrl/hospitals/nearby/20km?latitude=$lat&longitude=$lng');  // match API param names
+
+    final response = await http.get(url, headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    });
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      // Return the list of hospitals directly (adjust if your API wraps it differently)
+      return data;
+    } else {
+      throw Exception('Failed to fetch nearby hospitals: ${response.statusCode}');
+    }
+  }
 
 }
