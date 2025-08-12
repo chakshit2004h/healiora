@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:healiora/sidePages/medicalPage.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../services/ambulance_dervices.dart';
 import '../services/auth_services.dart';
 import '../sidePages/emergencybutton.dart';
 import '../sidePages/user_card.dart';
@@ -197,11 +198,46 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin{
       width: double.infinity,
       child: ElevatedButton.icon(
         icon: Icon(Icons.warning_amber_rounded, color: Colors.white),
-        label: Text("Trigger Emergency SOS",style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold),),
-        onPressed: () {
+        label: Text(
+          "Trigger Emergency SOS",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        onPressed: () async {
+          // Get user data
+          final user = await AuthService().getUserData(); // Should return your JSON object
+          if (user == null) {
+            print("❌ No user data found");
+            return;
+          }
+
+          var position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+
+          final ambulanceService = AmbulanceService(user.id.toString());
+
+          ambulanceService.updateLocation(position.latitude, position.longitude);
+
+          ambulanceService.requestAmbulance({
+            "symptoms": "Chest pain, difficulty breathing",
+            "severity": "high",
+            "notes": "Patient is conscious but in pain",
+            "patient_name": user.fullName,
+            "patient_phone": user.phoneNumber,
+            "patient_age": user.age,
+            "patient_gender": user.gender,
+          }, lat: position.latitude, lng: position.longitude);
+
           showDialog(
             context: context,
-            builder: (context) => EmergencySOSDialog(),
+            builder: (context) => AlertDialog(
+              title: Text("SOS Sent"),
+              content: Text("Ambulance request sent for ${user.fullName}."),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("OK"),
+                )
+              ],
+            ),
           );
         },
         style: ElevatedButton.styleFrom(
@@ -212,6 +248,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin{
       ),
     );
   }
+
 
   Widget _buildMedicalRecordsCard(BuildContext context) {
     return GestureDetector(
