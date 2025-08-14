@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:healiora/doctor_side/patientpage_doctor.dart';
+import 'package:healiora/doctor_side/profilepage_doctor.dart';
+import 'package:healiora/doctor_side/schedule_doctor.dart';
 
 class HospitalDashboard extends StatefulWidget {
   const HospitalDashboard({super.key});
@@ -8,8 +11,279 @@ class HospitalDashboard extends StatefulWidget {
 }
 
 class _HospitalDashboardState extends State<HospitalDashboard> {
+  int _currentIndex = 0;
+
+  /// Pages corresponding to each bottom tab.
+  final List<Widget> _pages = [
+    const DashboardScreen(),
+    const PatientpageDoctor(),
+    const ScheduleDoctor(),
+    const ProfilepageDoctor(),
+  ];
+
+
   @override
   Widget build(BuildContext context) {
-    return const Placeholder();
+    return Scaffold(
+      body: _pages[_currentIndex],
+
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        selectedItemColor: Colors.green,
+        unselectedItemColor: Colors.grey,
+        showUnselectedLabels: true,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: "Patients"),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: "Schedule"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+        ],
+      ),
+
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.green,
+        onPressed: () {
+          // Handle alerts action
+        },
+        child: const Icon(Icons.notifications,color: Colors.white,),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+    );
+  }
+}
+
+/// The main dashboard layout, styled to match your design.
+class DashboardScreen extends StatelessWidget {
+  const DashboardScreen({super.key});
+
+  @override
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        children: [
+          // Greeting bar stays fixed
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: _buildGreetingBar(),
+          ),
+
+          // Everything else scrolls
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
+                  const Text(
+                    "Today’s Overview",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildOverviewCardsRow(),
+                  const SizedBox(height: 20),
+                  _buildUrgentHeader(),
+                  const SizedBox(height: 12),
+                  _buildUrgentAlertCard(),
+                  const SizedBox(height: 12),
+                  _buildUrgentAlertCard(),
+                  const SizedBox(height: 12),
+                  _buildUrgentAlertCard(),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _buildGreetingBar() {
+    return Material(
+      elevation: 2, // controls shadow depth
+      shadowColor: Colors.black.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  "Good Morning",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  "Dr. Smith",
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.person, color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverviewCardsRow() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _overviewCard(Icons.warning, "SOS Alerts", "3", Colors.red.shade50, Colors.red),
+        _overviewCard(Icons.calendar_today, "Appointments", "8", Colors.green.shade50, Colors.green),
+        _overviewCard(Icons.people, "Patients", "24", Colors.blue.shade50, Colors.blue),
+      ],
+    );
+  }
+
+  Widget _buildUrgentHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          "Urgent SOS Alerts",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.red,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Text(
+            "3 Active",
+            style: TextStyle(color: Colors.white, fontSize: 12),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUrgentAlertCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 5,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildAlertHeader(),
+          const SizedBox(height: 8),
+          _buildCriticalTag(),
+          const SizedBox(height: 8),
+          const Text(
+            "Chest pain, difficulty breathing",
+            style: TextStyle(color: Colors.black87),
+          ),
+          const SizedBox(height: 8),
+          _buildTimestamp(),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {},
+              child: const Text("View Details",style: TextStyle(color: Colors.white),),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAlertHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: const [
+        Text(
+          "Sarah Johnson",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        Text(
+          "(34y)",
+          style: TextStyle(color: Colors.grey),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCriticalTag() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.red,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Text(
+        "CRITICAL",
+        style: TextStyle(color: Colors.white, fontSize: 12),
+      ),
+    );
+  }
+
+  Widget _buildTimestamp() {
+    return Row(
+      children: const [
+        Icon(Icons.access_time, size: 16, color: Colors.grey),
+        SizedBox(width: 4),
+        Text(
+          "5 min ago",
+          style: TextStyle(color: Colors.grey),
+        ),
+      ],
+    );
+  }
+
+  static Widget _overviewCard(
+      IconData icon, String title, String count, Color bgColor, Color iconColor) {
+    return Container(
+      width: 100,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        children: [
+          Icon(icon, color: iconColor, size: 28),
+          const SizedBox(height: 8),
+          Text(
+            count,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          Text(title, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
+    );
   }
 }

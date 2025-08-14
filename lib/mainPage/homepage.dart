@@ -3,7 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:healiora/sidePages/medicalPage.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../services/ambulance_dervices.dart';
+import '../services/ambulance_services.dart';
 import '../services/auth_services.dart';
 import '../sidePages/emergencybutton.dart';
 import '../sidePages/user_card.dart';

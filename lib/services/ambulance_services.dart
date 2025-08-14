@@ -6,7 +6,7 @@ class AmbulanceService {
 
   AmbulanceService(this.patientId) {
     socket = IO.io(
-      'http://localhost:8000', // Change to your backend URL
+      'http://localhost:8000',
       IO.OptionBuilder()
           .setTransports(['websocket'])
           .setQuery({"userId": patientId, "role": "patient"})
