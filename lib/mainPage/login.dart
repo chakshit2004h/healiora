@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:healiora/main.dart';
-import 'package:healiora/mainPage/admin_dashboard.dart';
 import 'package:healiora/mainPage/hospital_dashboard.dart';
 
+import '../ambulance_side/admin_dashboard.dart';
 import '../services/auth_services.dart';
 
 class Login extends StatefulWidget {
@@ -51,7 +51,7 @@ class _LoginState extends State<Login> {
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MainNav()));
           } else if (role.toLowerCase().contains('hospital') || role.toLowerCase().contains('doctor')) {
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HospitalDashboard()));
-          } else if (role.toLowerCase() == 'admin') {
+          } else if (role.toLowerCase().contains('admin') || role.toLowerCase().contains('ambulance')) {
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => AdminDashboard()));
           } else {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Unknown role: $role")));

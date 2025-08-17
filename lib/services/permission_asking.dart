@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../ambulance_side/admin_dashboard.dart';
 import '../main.dart';
-import '../mainPage/admin_dashboard.dart';
 import '../mainPage/hospital_dashboard.dart';
 
 class PermissionRequestPage extends StatefulWidget {
