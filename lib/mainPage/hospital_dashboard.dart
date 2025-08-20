@@ -2,6 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:healiora/doctor_side/patientpage_doctor.dart';
 import 'package:healiora/doctor_side/profilepage_doctor.dart';
 import 'package:healiora/doctor_side/schedule_doctor.dart';
+import 'package:healiora/doctor_side/socket.dart';
+import 'package:healiora/mainPage/homepage.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
+
+import '../services/auth_services.dart';
+
+String getDoctorIdFromToken(String token) {
+  Map<String, dynamic> decoded = JwtDecoder.decode(token);
+  return decoded["id"]; // change key depending on your backend's payload
+}
+
 
 class HospitalDashboard extends StatefulWidget {
   const HospitalDashboard({super.key});
@@ -20,7 +31,77 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
     const ScheduleDoctor(),
     const ProfilepageDoctor(),
   ];
+  late AmbulanceDoctorService doctorSocket;
 
+  @override
+  void initState() {
+    super.initState();
+    _initSocket(); // ✅ kick off async work
+  }
+
+  Future<void> _initSocket() async {
+    try {
+      // fetch logged-in doctor
+      final user = await AuthService().getUserData();
+      if (user == null) {
+        print("❌ No doctor data found");
+        return;
+      }
+
+      // initialize socket with doctorId (or token)
+      final doctorSocket = AmbulanceDoctorService(user.id.toString(), "doctor");
+      await doctorSocket.init();
+
+      // ✅ listen for hospital events
+      doctorSocket.on("doctor_case_assigned", (data) {
+        print("🚨 SOS ALERT received: $data");
+
+        if (!mounted) return;
+
+        // Show dialog instead of SnackBar
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text(
+                "🚨 Emergency SOS Alert",
+                style: TextStyle(color: Colors.red),
+              ),
+              content: Text("Patient: ${data['patientName']} \nLocation: ${data['location'] ?? 'Unknown'}"),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text("Dismiss"),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // close dialog
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => HomePage(), // or SOS details page
+                      ),
+                    );
+                  },
+                  child: const Text("View"),
+                ),
+              ],
+            );
+          },
+        );
+      });
+      print("✅ Doctor socket initialized for ${user.id}");
+    } catch (e) {
+      print("❌ Error initializing doctor socket: $e");
+    }
+  }
+
+
+  @override
+  void dispose() {
+    doctorSocket?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

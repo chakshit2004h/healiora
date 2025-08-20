@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:healiora/sidePages/medicalPage.dart';
@@ -70,25 +72,55 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin{
       print("API call failed: $e");
     }
   }
-
+  Future<UserProfile?> userFuture = AuthService().getUserData();
+  IO.Socket? socket;
 
   @override
   void initState() {
     super.initState();
-    _userFuture = AuthService().getUserData(); // Cached future
-    testApiCall();
-    Future.microtask(() async {
-      var status = await Permission.location.status;
-      if (!status.isGranted) {
-        status = await Permission.location.request();
-      }
+    _userFuture = AuthService().getUserData();
+    // load user data
+    userFuture = AuthService().getUserData();
 
-      if (status.isGranted) {
-        await _fetchNearbyHospitals();
-      } else {
-        print("❌ Location permission denied");
+    // once user is loaded, initialize socket with token
+    userFuture.then((user) async {
+      if (user != null) {
+        String? token = await AuthService().getToken(); // fetch token
+        if (token != null) {
+          _initSocket(user.id.toString(), token);
+        }
       }
     });
+  }
+
+  void _initSocket(String patientId, String token) {
+    socket = IO.io(
+      'https://healiorabackend.rawcode.online',
+      IO.OptionBuilder()
+          .setTransports(['websocket'])
+          .setQuery({
+        "userId": patientId,
+        "role": "patient",
+        "token": token,
+      })
+          .disableAutoConnect()
+          .build(),
+    );
+
+    socket?.connect();
+
+    socket?.onConnect((_) {
+      print('✅ Socket connected as patient $patientId');
+    });
+
+    socket?.onDisconnect((_) {
+      print('❌ Socket disconnected');
+    });
+  }
+  @override
+  void dispose() {
+    socket?.disconnect();
+    super.dispose();
   }
   @override
   Widget build(BuildContext context) {
@@ -203,43 +235,86 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin{
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         onPressed: () async {
-          // Get user data
-          final user = await AuthService().getUserData(); // Should return your JSON object
-          if (user == null) {
-            print("❌ No user data found");
-            return;
-          }
-
-          var position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-
-          final ambulanceService = AmbulanceService(user.id.toString());
-
-          ambulanceService.updateLocation(position.latitude, position.longitude);
-
-          ambulanceService.requestAmbulance({
-            "symptoms": "Chest pain, difficulty breathing",
-            "severity": "high",
-            "notes": "Patient is conscious but in pain",
-            "patient_name": user.fullName,
-            "patient_phone": user.phoneNumber,
-            "patient_age": user.age,
-            "patient_gender": user.gender,
-          }, lat: position.latitude, lng: position.longitude);
-
           showDialog(
             context: context,
-            builder: (context) => AlertDialog(
-              title: Text("SOS Sent"),
-              content: Text("Ambulance request sent for ${user.fullName}."),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text("OK"),
-                )
-              ],
+            barrierDismissible: false,
+            builder: (context) => Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Colors.redAccent),
+                    SizedBox(height: 16),
+                    Text("Sending SOS request...", style: TextStyle(fontSize: 16)),
+                  ],
+                ),
+              ),
             ),
           );
+
+          try {
+            final user = await AuthService().getUserData();
+            if (user == null) {
+              Navigator.pop(context);
+              print("❌ No user data found");
+              return;
+            }
+
+            var position = await Geolocator.getCurrentPosition(
+                desiredAccuracy: LocationAccuracy.high);
+
+            final ambulanceService = AmbulanceService(user.id.toString());
+            await ambulanceService.init();   // ✅ make sure socket is connected
+
+            ambulanceService.updateLocation(position.latitude, position.longitude);
+
+            ambulanceService.requestAmbulance({
+              "symptoms": "Chest pain, difficulty breathing",
+              "severity": "high",
+              "notes": "Patient is conscious but in pain",
+              "patient_name": user.fullName,
+              "patient_phone": user.phoneNumber,
+              "patient_age": user.age,
+              "patient_gender": user.gender,
+            }, lat: position.latitude, lng: position.longitude);
+
+            Navigator.pop(context);
+
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text("🚨 SOS Sent"),
+                content: Text("Ambulance request sent for ${user.fullName}."),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text("OK"),
+                  )
+                ],
+              ),
+            );
+          } catch (e) {
+            Navigator.pop(context);
+            print("❌ Error sending SOS: $e");
+
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text("Error"),
+                content: Text("Failed to send SOS. Please try again."),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text("OK"),
+                  )
+                ],
+              ),
+            );
+          }
         },
+
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.lightBlue,
           padding: EdgeInsets.symmetric(vertical: 16),
@@ -248,6 +323,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin{
       ),
     );
   }
+
 
 
   Widget _buildMedicalRecordsCard(BuildContext context) {

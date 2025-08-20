@@ -7,7 +7,7 @@ import '../sidePages/medical_record.dart';
 
 class AuthService {
   final _storage = FlutterSecureStorage();
-  final String baseUrl = 'https://healiora-backend.onrender.com/api/v1';
+  final String baseUrl = 'https://healiorabackend.rawcode.online/api/v1';
 
   Future<bool> login(String email, String password) async {
     final url = Uri.parse('$baseUrl/users/credential/login');
@@ -46,7 +46,7 @@ class AuthService {
     required String emergencyContact,
     required String gender,
   }) async {
-    final url = Uri.parse('https://healiora-backend.onrender.com/api/v1/patients/register-complete'); // ✅ Correct endpoint
+    final url = Uri.parse('https://healiorabackend.rawcode.online/api/v1/patients/register-complete'); // ✅ Correct endpoint
     final headers = {'Content-Type': 'application/json'};
 
     final body = jsonEncode({
@@ -104,12 +104,12 @@ class AuthService {
 
     return null;
   }
-  Future<String?> _getToken() async {
+  Future<String?> getToken() async {
     return await _storage.read(key: 'token');
   }
 
   Future<MedicalRecord?> getMedicalRecord() async {
-    final token = await _getToken();
+    final token = await getToken();
     final url = Uri.parse('$baseUrl/medical-records/me');
 
     final response = await http.get(url, headers: {
@@ -127,7 +127,7 @@ class AuthService {
   }
 
   Future<bool> createMedicalRecord(MedicalRecord record) async {
-    final token = await _getToken();
+    final token = await getToken();
     final url = Uri.parse('$baseUrl/medical-records/create');
 
     final response = await http.post(
@@ -143,7 +143,7 @@ class AuthService {
   }
 
   Future<bool> updateMedicalRecord(MedicalRecord record) async {
-    final token = await _getToken();
+    final token = await getToken();
     final url = Uri.parse('$baseUrl/medical-records/update');
 
     final response = await http.put(

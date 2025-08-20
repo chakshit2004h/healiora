@@ -17,11 +17,11 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _index = 0;
 
-  final _pages = const [
+  final _pages = [
     HospitalDashboard(),
-    PatientpageDoctor(),
-    ScheduleDoctor(),
-    ProfilepageDoctor(),
+    const PatientpageDoctor(),
+    const ScheduleDoctor(),
+    const ProfilepageDoctor(),
   ];
 
   @override

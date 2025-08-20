@@ -42,13 +42,13 @@ class _ProfilePageState extends State<ProfilePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: const [
                         Text(
-                          'John Doe',
+                          'Chay',
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 18),
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'john.doe@email.com',
+                          'chakshitguleria99@email.com',
                           style: TextStyle(color: Colors.grey),
                         ),
                       ],
