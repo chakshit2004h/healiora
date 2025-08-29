@@ -1,12 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:healiora/doctor_side/patientpage_doctor.dart';
 import 'package:healiora/doctor_side/profilepage_doctor.dart';
 import 'package:healiora/doctor_side/schedule_doctor.dart';
 import 'package:healiora/doctor_side/socket.dart';
-import 'package:healiora/mainPage/homepage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
-
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_services.dart';
+import 'package:dio/dio.dart';
 
 String getDoctorIdFromToken(String token) {
   Map<String, dynamic> decoded = JwtDecoder.decode(token);
@@ -38,6 +41,39 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
     super.initState();
     _initSocket(); // ✅ kick off async work
   }
+  Future<void> downloadPdf(String url, String fileName) async {
+    try {
+      if (Platform.isAndroid) {
+        var status = await Permission.storage.request();
+        if (!status.isGranted) {
+          print('Storage permission denied');
+          return;
+        }
+      }
+
+      Directory dir;
+      if (Platform.isAndroid) {
+        dir = (await getExternalStorageDirectory())!;
+      } else {
+        dir = await getApplicationDocumentsDirectory();
+      }
+
+      String savePath = '${dir.path}/$fileName';
+
+      // Ensure the URL is direct download
+      if (!url.contains('?dl=1')) {
+        url = '$url&dl=1';
+      }
+
+      print('Downloading to $savePath');
+      await Dio().download(url, savePath);
+      print('Download completed');
+    } catch (e) {
+      print('Download failed: $e');
+    }
+  }
+
+
 
   Future<void> _initSocket() async {
     try {
@@ -67,24 +103,26 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
                 "🚨 Emergency SOS Alert",
                 style: TextStyle(color: Colors.red),
               ),
-              content: Text("Patient: ${data['patientName']} \nLocation: ${data['location'] ?? 'Unknown'}"),
+              content: Text("Patient: chay \nLocation: ${data['location'] ?? 'Kharar'}"),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text("Dismiss"),
                 ),
                 TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(); // close dialog
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => HomePage(), // or SOS details page
-                      ),
-                    );
+                  onPressed: () async {
+                    const url = "https://drive.google.com/file/d/11UuYHrIddea57yM9GOLTAhAu3XqOJK1d/view?usp=drive_link";
+                    final uri = Uri.parse(url);
+
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    } else {
+                      print("Could not launch $url");
+                    }
                   },
-                  child: const Text("View"),
-                ),
+                  child: const Text("Download"),
+                )
+
               ],
             );
           },

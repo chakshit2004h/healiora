@@ -78,6 +78,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin{
   @override
   void initState() {
     super.initState();
+    _fetchNearbyHospitals();
     _userFuture = AuthService().getUserData();
     // load user data
     userFuture = AuthService().getUserData();
@@ -329,7 +330,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin{
   Widget _buildMedicalRecordsCard(BuildContext context) {
     return GestureDetector(
       onTap: (){
-        Navigator.push(context,MaterialPageRoute(builder: (context)=> MedicalPage()));
+        Navigator.push(context,MaterialPageRoute(builder: (context)=> MedicalDetailsPage()));
       },
       child: Container(
         padding: EdgeInsets.all(16),
