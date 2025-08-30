@@ -25,7 +25,35 @@ class _RecordsPageState extends State<RecordsPage> {
     'otherIssues': TextEditingController(),
     'emergencyName': TextEditingController(),
     'emergencyNumber': TextEditingController(),
+    'occupation' : TextEditingController(),
+    'addiction' : TextEditingController(),
+    'smoking' : TextEditingController(),
+    'drinking' : TextEditingController(),
+    'address' : TextEditingController(),
+    'sugar' : TextEditingController(),
   };
+  bool _smoking = false;
+  bool _drinking = false;
+  bool _sugar = false;
+
+  Widget _buildSwitch(String label, String field) {
+    return SwitchListTile(
+      title: Text(label),
+      value: field == "smoking"
+          ? _smoking
+          : field == "drinking"
+          ? _drinking
+          : _sugar,
+      onChanged: (val) {
+        setState(() {
+          if (field == "smoking") _smoking = val;
+          if (field == "drinking") _drinking = val;
+          if (field == "sugar") _sugar = val;
+        });
+      },
+    );
+  }
+
 
   @override
   void initState() {
@@ -65,14 +93,20 @@ class _RecordsPageState extends State<RecordsPage> {
         otherIssues: _controllers['otherIssues']!.text,
         emergencyContactName: _controllers['emergencyName']!.text,
         emergencyContactNumber: _controllers['emergencyNumber']!.text,
+
+        // new fields
+        occupation: _controllers['occupation']!.text,
+        addiction: _controllers['addiction']!.text,
+        address: _controllers['address']!.text,
+        smoking: _smoking,
+        drinking: _drinking,
+        sugar: _sugar,
       );
 
       bool success;
       if (_record == null) {
-        // Create new record
         success = await _authService.createMedicalRecord(newRecord);
       } else {
-        // Update existing record
         success = await _authService.updateMedicalRecord(newRecord);
       }
 
@@ -80,18 +114,18 @@ class _RecordsPageState extends State<RecordsPage> {
         setState(() {
           _isCreating = false;
         });
-        _loadMedicalRecord(); // ✅ Refresh record from API
+        _loadMedicalRecord();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Medical record saved successfully')),
+          SnackBar(content: Text('✅ Medical record saved successfully')),
         );
-      }
-      else {
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('❌ Failed to save medical record')),
         );
       }
     }
   }
+
 
 
   Widget _buildSection(String title, String value) {
@@ -175,6 +209,12 @@ class _RecordsPageState extends State<RecordsPage> {
                             _controllers['otherIssues']!.text = _record!.otherIssues;
                             _controllers['emergencyName']!.text = _record!.emergencyContactName;
                             _controllers['emergencyNumber']!.text = _record!.emergencyContactNumber;
+                            _controllers['occupation']!.text = _record!.occupation;
+                            _controllers['addiction']!.text = _record!.addiction;
+                            _controllers['address']!.text = _record!.address;
+                            _smoking = _record!.smoking;
+                            _drinking = _record!.drinking;
+                            _sugar = _record!.sugar;
 
                             _isCreating = true; // Switch to form mode
                           });
@@ -213,12 +253,26 @@ class _RecordsPageState extends State<RecordsPage> {
                   ),
                   SizedBox(height: 12),
 
-                  // ✅ Emergency Contact Name
+                  // ✅ Emergency Contact
                   _buildSection("Emergency Contact Name", _record!.emergencyContactName),
                   SizedBox(height: 12),
-
-                  // ✅ Emergency Contact Number
                   _buildSection("Emergency Contact Number", _record!.emergencyContactNumber),
+                  SizedBox(height: 16),
+
+                  // ✅ New Fields
+                  _buildSection("Occupation", _record!.occupation),
+                  SizedBox(height: 12),
+                  _buildSection("Addiction", _record!.addiction.isNotEmpty ? _record!.addiction : "None"),
+                  SizedBox(height: 12),
+                  _buildSection("Address", _record!.address),
+                  SizedBox(height: 16),
+
+                  // ✅ Boolean fields
+                  _buildSection("Smoking", _record!.smoking ? "Yes" : "No"),
+                  SizedBox(height: 12),
+                  _buildSection("Drinking", _record!.drinking ? "Yes" : "No"),
+                  SizedBox(height: 12),
+                  _buildSection("Diabetes (Sugar)", _record!.sugar ? "Yes" : "No"),
                 ],
               ),
             ),
@@ -227,7 +281,6 @@ class _RecordsPageState extends State<RecordsPage> {
       ),
     );
   }
-
 
   Widget _buildEmptyState() {
     return Center(
@@ -300,6 +353,16 @@ class _RecordsPageState extends State<RecordsPage> {
                 _buildField("Other Issues", _controllers['otherIssues']!),
                 _buildField("Emergency Contact Name", _controllers['emergencyName']!),
                 _buildField("Emergency Contact Number", _controllers['emergencyNumber']!),
+                _buildField("Occupation", _controllers['occupation']!),
+                _buildField("Addiction (if any)", _controllers['addiction']!),
+                _buildField("Address", _controllers['address']!),
+
+                SizedBox(height: 20),
+
+                // 📌 New Boolean fields (using Switch)
+                _buildSwitch("Do you smoke?", "smoking"),
+                _buildSwitch("Do you drink alcohol?", "drinking"),
+                _buildSwitch("Do you have sugar (diabetes)?", "sugar"),
                 SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
