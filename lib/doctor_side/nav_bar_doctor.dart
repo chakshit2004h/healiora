@@ -3,7 +3,7 @@ import 'package:healiora/doctor_side/patientpage_doctor.dart';
 import 'package:healiora/doctor_side/profilepage_doctor.dart';
 import 'package:healiora/doctor_side/schedule_doctor.dart';
 
-import '../mainPage/hospital_dashboard.dart';
+import 'package:healiora/doctor_side/hospital_dashboard.dart';
 import 'custombar_doctor.dart';
 
 /// AppShell keeps the BottomNav static for every page
@@ -20,8 +20,8 @@ class _AppShellState extends State<AppShell> {
   final _pages = [
     HospitalDashboard(),
     const PatientpageDoctor(),
-    const ScheduleDoctor(),
-    const ProfilepageDoctor(),
+    const PatientRecordsPage(patientName: '',),
+    const DoctorProfilePage(),
   ];
 
   @override

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:healiora/main.dart';
-import 'package:healiora/mainPage/hospital_dashboard.dart';
+import 'package:healiora/doctor_side/hospital_dashboard.dart';
 
 import '../ambulance_side/admin_dashboard.dart';
 import '../services/auth_services.dart';

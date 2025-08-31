@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../ambulance_side/admin_dashboard.dart';
 import '../main.dart';
-import '../mainPage/hospital_dashboard.dart';
+import 'package:healiora/doctor_side/hospital_dashboard.dart';
 
 class PermissionRequestPage extends StatefulWidget {
   final String role; // So we know where to send the user after permission is granted
