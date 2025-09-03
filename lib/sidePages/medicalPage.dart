@@ -59,7 +59,6 @@ class _MedicalDetailsPageState extends State<MedicalDetailsPage> {
     });
 
     try {
-      // Request storage permission
       await Permission.storage.request();
 
       final pdf = pw.Document();
@@ -67,176 +66,147 @@ class _MedicalDetailsPageState extends State<MedicalDetailsPage> {
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
-          margin: pw.EdgeInsets.all(32),
+          margin: pw.EdgeInsets.all(24),
           build: (pw.Context context) {
             return [
               // Header
-              pw.Container(
-                padding: pw.EdgeInsets.all(20),
-                decoration: pw.BoxDecoration(
-                  color: PdfColors.blue50,
-                  border: pw.Border.all(color: PdfColors.blue200),
-                  borderRadius: pw.BorderRadius.circular(8),
-                ),
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'MEDICAL DETAILS REPORT',
-                      style: pw.TextStyle(
-                        fontSize: 24,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.blue800,
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Row(
+                    children: [
+                      pw.Icon(pw.IconData(0xe87c), size: 20, color: PdfColors.red),
+                      pw.SizedBox(width: 8),
+                      pw.Text(
+                        "Patient Record – $userName",
+                        style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
                       ),
+                    ],
+                  ),
+                  pw.Container(
+                    padding: pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.black,
+                      borderRadius: pw.BorderRadius.circular(6),
                     ),
-                    pw.SizedBox(height: 10),
-                    pw.Text(
-                      'Generated on: ${DateTime.now().toString().split('.')[0]}',
-                      style: pw.TextStyle(fontSize: 12, color: PdfColors.grey600),
+                    child: pw.Text(
+                      "Download PDF",
+                      style: pw.TextStyle(color: PdfColors.white, fontSize: 12),
                     ),
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 4),
+              pw.Text(
+                "Auto-shared via SOS alert",
+                style: pw.TextStyle(color: PdfColors.grey600, fontSize: 10),
+              ),
+              pw.SizedBox(height: 16),
+
+              // Tabs Row (Blood, Allergies, Meds)
+              pw.Container(
+                color: PdfColors.blue900,
+                padding: pw.EdgeInsets.all(8),
+                child: pw.Row(
+                  children: [
+                    _buildTag("BLOOD", PdfColors.red, PdfColors.white),
+                    pw.SizedBox(width: 8),
+                    _buildTag("ALLERGIES", PdfColors.grey700, PdfColors.white),
+                    pw.SizedBox(width: 8),
+                    _buildTag("Penicillin", PdfColors.red, PdfColors.white),
+                    pw.SizedBox(width: 8),
+                    _buildTag("MEDS 2 current", PdfColors.blue, PdfColors.white),
                   ],
                 ),
               ),
+              pw.SizedBox(height: 20),
 
-              pw.SizedBox(height: 30),
-
-              // Personal Information Section
-              pw.Container(
-                width: double.infinity,
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'PERSONAL INFORMATION',
-                      style: pw.TextStyle(
-                        fontSize: 18,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.blue800,
-                      ),
-                    ),
-                    pw.SizedBox(height: 15),
-                    pw.Container(
-                      padding: pw.EdgeInsets.all(15),
-                      decoration: pw.BoxDecoration(
-                        border: pw.Border.all(color: PdfColors.grey300),
-                        borderRadius: pw.BorderRadius.circular(5),
-                      ),
-                      child: pw.Column(
-                        children: [
-                          _buildInfoRow('Full Name:', userName),
-                          _buildInfoRow('Age:', '$userAge years'),
-                          _buildInfoRow('Gender:', userGender),
-                          _buildInfoRow('Date of Birth:', dobController.text),
-                          _buildInfoRow('Blood Group:', bloodGroupController.text.isNotEmpty ? bloodGroupController.text : 'Not specified'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+              // Patient Info + Address
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Expanded(
+                    child: _buildBoxedSection("Patient Info", [
+                      _infoRow("Name", userName),
+                      _infoRow("Age / Gender", "$userAge - $userGender"),
+                      _infoRow("Occupation", "Factory Supervisor"),
+                    ]),
+                  ),
+                  pw.SizedBox(width: 16),
+                  pw.Expanded(
+                    child: _buildBoxedSection("Location / Address", [
+                      _infoRow("Address", "221B Baker Street"),
+                      _infoRow("City", "London"),
+                      _infoRow("Addictions", "Smoking"),
+                    ]),
+                  ),
+                ],
               ),
+              pw.SizedBox(height: 16),
 
-              pw.SizedBox(height: 25),
-
-              // Medical History Section
-              pw.Container(
-                width: double.infinity,
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'MEDICAL HISTORY',
-                      style: pw.TextStyle(
-                        fontSize: 18,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.blue800,
-                      ),
-                    ),
-                    pw.SizedBox(height: 15),
-                    pw.Container(
-                      padding: pw.EdgeInsets.all(15),
-                      decoration: pw.BoxDecoration(
-                        border: pw.Border.all(color: PdfColors.grey300),
-                        borderRadius: pw.BorderRadius.circular(5),
-                      ),
-                      child: pw.Column(
-                        children: [
-                          _buildInfoRow('Past Surgeries:', pastSurgeriesController.text.isNotEmpty ? pastSurgeriesController.text : 'None reported'),
-                          _buildInfoRow('Long-term Medications:', longTermMedsController.text.isNotEmpty ? longTermMedsController.text : 'None reported'),
-                          _buildInfoRow('Ongoing Illnesses:', ongoingIllnessesController.text.isNotEmpty ? ongoingIllnessesController.text : 'None reported'),
-                          _buildInfoRow('Allergies:', allergiesController.text.isNotEmpty ? allergiesController.text : 'None reported'),
-                          _buildInfoRow('Other Medical Issues:', otherIssuesController.text.isNotEmpty ? otherIssuesController.text : 'None reported'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+              // Current Medications + Chronic Conditions
+              pw.Row(
+                children: [
+                  pw.Expanded(
+                    child: _buildBoxedSection("Current Medications", [
+                      pw.Bullet(text: "Insulin"),
+                      pw.Bullet(text: "Warfarin"),
+                    ]),
+                  ),
+                  pw.SizedBox(width: 16),
+                  pw.Expanded(
+                    child: _buildBoxedSection("Chronic Conditions", [
+                      pw.Bullet(text: "Diabetes"),
+                      pw.Bullet(text: "Asthma"),
+                    ]),
+                  ),
+                ],
               ),
+              pw.SizedBox(height: 16),
 
-              pw.SizedBox(height: 25),
+              // Emergency Contact
+              _buildBoxedSection("Emergency Contact", [
+                _infoRow("Name", "Jamie Johnson"),
+                _infoRow("Relation", "Spouse"),
+                _infoRow("Phone", "+1 555-2222"),
+              ], color: PdfColors.red50),
 
-              // Emergency Contact Section
-              pw.Container(
-                width: double.infinity,
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'EMERGENCY CONTACT',
-                      style: pw.TextStyle(
-                        fontSize: 18,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.red800,
-                      ),
-                    ),
-                    pw.SizedBox(height: 15),
-                    pw.Container(
-                      padding: pw.EdgeInsets.all(15),
-                      decoration: pw.BoxDecoration(
-                        color: PdfColors.red50,
-                        border: pw.Border.all(color: PdfColors.red200),
-                        borderRadius: pw.BorderRadius.circular(5),
-                      ),
-                      child: pw.Column(
-                        children: [
-                          _buildInfoRow('Contact Name:', emergencyContactNameController.text.isNotEmpty ? emergencyContactNameController.text : 'Not provided'),
-                          _buildInfoRow('Contact Number:', emergencyContactNumberController.text.isNotEmpty ? emergencyContactNumberController.text : 'Not provided'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              pw.SizedBox(height: 16),
 
-              pw.SizedBox(height: 30),
+              // Past Diagnoses
+              _buildBoxedSection("Past Diagnoses / Major Illnesses", [
+                _infoRow("Asthma", "Apr 3, 2018"),
+                _infoRow("Hypertension", "Aug 12, 2020"),
+                _infoRow("Diabetes Type 2", "Jan 18, 2022"),
+              ]),
 
-              // Footer
-              pw.Container(
-                width: double.infinity,
-                padding: pw.EdgeInsets.all(15),
-                decoration: pw.BoxDecoration(
-                  color: PdfColors.grey100,
-                  border: pw.Border.all(color: PdfColors.grey300),
-                ),
-                child: pw.Text(
-                  'This document contains confidential medical information. Keep it secure and share only with authorized healthcare providers.',
-                  style: pw.TextStyle(fontSize: 10, fontStyle: pw.FontStyle.italic),
-                  textAlign: pw.TextAlign.center,
-                ),
-              ),
+              pw.SizedBox(height: 16),
+
+              // Immunizations
+              _buildBoxedSection("Immunizations & Preventive Care", [
+                pw.Text("No immunization data."),
+              ]),
+
+              pw.SizedBox(height: 16),
+
+              // Hospitalizations
+              _buildBoxedSection("Other (Previous Hospitalizations)", [
+                pw.Bullet(
+                    text:
+                    "St. Mary’s General Hospital, London: admitted for stroke on Jan 12, 2023, discharged Jan 18, 2023."),
+                pw.Bullet(
+                    text:
+                    "City Care Hospital, London: admitted for asthma exacerbation on Jun 1, 2021, discharged Jun 3, 2021."),
+              ]),
             ];
           },
         ),
       );
 
-      // Get directory for saving
       final directory = Directory('/storage/emulated/0/Download');
-      final file = File('${directory.path}/medical_details_${DateTime.now().millisecondsSinceEpoch}.pdf');
-
-
-      // Save PDF
+      final file = File('${directory.path}/patient_record_${DateTime.now().millisecondsSinceEpoch}.pdf');
       await file.writeAsBytes(await pdf.save());
 
-      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('✅ PDF saved successfully!'),
@@ -245,18 +215,15 @@ class _MedicalDetailsPageState extends State<MedicalDetailsPage> {
             label: 'Open',
             textColor: Colors.white,
             onPressed: () async {
-              await OpenFilex.open(file.path);   // <-- Opens the saved PDF
+              await OpenFilex.open(file.path);
             },
           ),
         ),
       );
     } catch (e) {
-      print('Error generating PDF: $e');
+      print("❌ Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Failed to generate PDF: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text("Failed: $e"), backgroundColor: Colors.red),
       );
     } finally {
       setState(() {
@@ -265,29 +232,55 @@ class _MedicalDetailsPageState extends State<MedicalDetailsPage> {
     }
   }
 
-  pw.Widget _buildInfoRow(String label, String value) {
-    return pw.Padding(
-      padding: pw.EdgeInsets.symmetric(vertical: 4),
-      child: pw.Row(
+  pw.Widget _buildTag(String text, PdfColor bg, PdfColor color) {
+    return pw.Container(
+      padding: pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: pw.BoxDecoration(
+        color: bg,
+        borderRadius: pw.BorderRadius.circular(12),
+      ),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(color: color, fontSize: 10, fontWeight: pw.FontWeight.bold),
+      ),
+    );
+  }
+
+  pw.Widget _buildBoxedSection(String title, List<pw.Widget> children, {PdfColor color = PdfColors.white}) {
+    return pw.Container(
+      padding: pw.EdgeInsets.all(12),
+      decoration: pw.BoxDecoration(
+        color: color,
+        border: pw.Border.all(color: PdfColors.grey300),
+        borderRadius: pw.BorderRadius.circular(6),
+      ),
+      child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Container(
-            width: 150,
-            child: pw.Text(
-              label,
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12),
-            ),
+          pw.Text(
+            title,
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14, color: PdfColors.blue800),
           ),
-          pw.Expanded(
-            child: pw.Text(
-              value,
-              style: pw.TextStyle(fontSize: 12),
-            ),
-          ),
+          pw.SizedBox(height: 8),
+          ...children,
         ],
       ),
     );
   }
+
+  pw.Widget _infoRow(String key, String value) {
+    return pw.Padding(
+      padding: pw.EdgeInsets.symmetric(vertical: 2),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(key, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+          pw.Text(value, style: pw.TextStyle(fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -408,7 +401,7 @@ class _MedicalDetailsPageState extends State<MedicalDetailsPage> {
                   onPressed: isGenerating ? null : generateAndDownloadPDF,
                   icon: isGenerating
                       ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : Icon(Icons.picture_as_pdf, size: 24),
+                      : Icon(Icons.picture_as_pdf, size: 24,color: Colors.white,),
                   label: Text(
                     isGenerating ? 'Generating PDF...' : 'Download PDF',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),

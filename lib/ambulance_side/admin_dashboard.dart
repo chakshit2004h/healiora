@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:healiora/ambulance_side/active_trip.dart';
 import 'package:healiora/ambulance_side/history.dart';
+import 'package:healiora/ambulance_side/profile_ambulance.dart';
+
+import 'ambulance_socket.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -9,17 +12,68 @@ class AdminDashboard extends StatefulWidget {
   State<AdminDashboard> createState() => _AdminDashboardState();
 }
 
-
 class _AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
   List<Map<String, dynamic>> activeTrips = [];
   List<Map<String, dynamic>> historyTrips = [];
 
-  late final List<Widget> _pages = [
-    dashboard(),     // Dashboard content
-    ActiveTrip(),    // Active Trip content
-    History(historyTrips: historyTrips),       // History content
-  ];
+  late final List<Widget> _pages;
+
+  late AmbulanceSocketService ambulanceService;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // init pages
+    _pages = [
+      dashboard(),
+      ActiveTrip(),
+      History(),
+    ];
+
+    _initSocket();
+  }
+
+  Future<void> _initSocket() async {
+    // ✅ Initialize ambulance socket
+    ambulanceService = AmbulanceSocketService("AMB123", "ambulance"); // pass real ambulanceId
+    await ambulanceService.init();
+
+    // ✅ Listen for SOS requests
+    ambulanceService.on("sos_request", (data) {
+      print("🚨 SOS Request received: $data");
+      print("🚑 Ambulance Profile Response: ${data.body}");
+      setState(() {
+        activeTrips.add({
+          "tripId": data["tripId"] ?? "TR-${DateTime.now().millisecondsSinceEpoch}",
+          "patientId": data["patientId"] ?? "Unknown",
+          "name": data["name"] ?? "Unknown",
+          "address": data["address"] ?? "Unknown",
+          "urgency": data["urgency"] ?? "NORMAL",
+          "time": DateTime.now(),
+        });
+      });
+    });
+
+    // ✅ Listen for trip updates
+    ambulanceService.on("trip_update", (data) {
+      print("📦 Trip Update: $data");
+      // Example: move trip from active to history if completed
+      if (data["status"] == "completed") {
+        setState(() {
+          activeTrips.removeWhere((t) => t["tripId"] == data["tripId"]);
+          historyTrips.add(data);
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    ambulanceService.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,20 +90,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
             const Text(
               "Healiora Ambulance",
               style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-                fontSize: 18
-              ),
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                  fontSize: 18),
             ),
           ],
         ),
-        actions: const [
+        actions: [
           Padding(
             padding: EdgeInsets.only(right: 12.0),
             child: CircleAvatar(
               radius: 18,
               backgroundColor: Colors.black12,
-              child: Icon(Icons.person, color: Colors.black),
+              child: IconButton(
+                icon: Icon(Icons.person, color: Colors.black),
+                onPressed: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => AmbulanceProfilePage()));
+                },
+              ),
             ),
           )
         ],
@@ -89,7 +150,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget dashboard(){
+  Widget dashboard() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -101,48 +162,33 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
           const SizedBox(height: 10),
 
-          // Request Card 1
-          _sosCard(
-            urgency: "CRITICAL",
-            urgencyColor: Colors.red,
-            time: "2 min ago",
-            name: "John Smith",
-            id: "P-2024-001",
-            address: "123 Main St, Downtown",
-            distance: "2.3 km away",
-          ),
-
-          const SizedBox(height: 12),
-
-          // Request Card 2
-          _sosCard(
-            urgency: "HIGH",
-            urgencyColor: Colors.blue,
-            time: "5 min ago",
-            name: "Sarah Johnson",
-            id: "P-2024-002",
-            address: "456 Oak Ave, Midtown",
-            distance: "4.1 km away",
-          ),
-
-          const SizedBox(height: 12),
-
-          // Request Card 3
-          _sosCard(
-            urgency: "NORMAL",
-            urgencyColor: Colors.green,
-            time: "8 min ago",
-            name: "Mike Davis",
-            id: "P-2024-003",
-            address: "789 Pine Rd, Uptown",
-            distance: "1.8 km away",
-          ),
+          // Dynamically render SOS cards from socket data
+          ...activeTrips.map((trip) {
+            return Column(
+              children: [
+                _sosCard(
+                  urgency: trip["urgency"],
+                  urgencyColor: trip["urgency"] == "CRITICAL"
+                      ? Colors.red
+                      : (trip["urgency"] == "HIGH"
+                      ? Colors.blue
+                      : Colors.green),
+                  time: "${trip["time"]}",
+                  name: trip["name"],
+                  id: trip["patientId"],
+                  address: trip["address"],
+                  distance: "Unknown", // you can calculate if backend sends
+                ),
+                const SizedBox(height: 12),
+              ],
+            );
+          }).toList(),
         ],
       ),
     );
   }
 
-  // SOS Request Card Widget
+  // SOS Request Card Widget (unchanged)
   Widget _sosCard({
     required String urgency,
     required Color urgencyColor,
@@ -248,7 +294,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
             onPressed: () {
               setState(() {
                 activeTrips.add({
-                  "tripId": "TR-${DateTime.now().millisecondsSinceEpoch}", // generate trip id
+                  "tripId":
+                  "TR-${DateTime.now().millisecondsSinceEpoch}",
                   "patientId": id,
                   "name": name,
                   "address": address,
@@ -275,20 +322,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           activeTrips.remove(trip);
                           historyTrips.add(trip);
                         });
-                        Navigator.pop(context); // close dialog
+                        Navigator.pop(context);
                       },
                     ),
                   );
                 },
               );
             },
-            child: const Text("Accept",style: TextStyle(color: Colors.white),),
+            child: const Text(
+              "Accept",
+              style: TextStyle(color: Colors.white),
+            ),
           )
         ],
       ),
     );
   }
 }
+
+// Trip Details Dialog (unchanged)
 Widget _tripDetailsDialog({
   required String name,
   required String id,
@@ -297,161 +349,157 @@ Widget _tripDetailsDialog({
   required Function(Map<String, dynamic>) onComplete,
 }) {
   final tripData = {
-    "tripId": "TR-${DateTime
-        .now()
-        .millisecondsSinceEpoch}",
+    "tripId": "TR-${DateTime.now().millisecondsSinceEpoch}",
     "patientId": id,
     "name": name,
     "address": address,
     "urgency": urgency,
     "time": DateTime.now(),
   };
-  {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min, // shrink to content
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name,
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold)),
-                    Text("ID: $id",
-                        style: const TextStyle(color: Colors.black54)),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on,
-                            size: 16, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(address,
-                              style: const TextStyle(color: Colors.black87)),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  urgency,
-                  style: const TextStyle(
-                      color: Colors.red, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Allergies & Condition
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Column(
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Allergies",
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.black54)),
-                  Text("N/A",
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  Text(name,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text("ID: $id",
+                      style: const TextStyle(color: Colors.black54)),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on,
+                          size: 16, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(address,
+                            style:
+                            const TextStyle(color: Colors.black87)),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Condition",
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.black54)),
-                  Text("Unknown",
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                ],
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
               ),
-            ],
-          ),
+              child: Text(
+                urgency,
+                style: const TextStyle(
+                    color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
 
-          const SizedBox(height: 16),
+        const SizedBox(height: 16),
 
-          // Buttons Row 1
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  onPressed: () {},
-                  icon: const Icon(Icons.local_hospital),
-                  label: const Text("Notify Hospital"),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  onPressed: () {
-                    onComplete(tripData);
-                  },
-                  icon: const Icon(Icons.check, color: Colors.white),
-                  label: const Text("Mark as Completed",
-                      style: TextStyle(color: Colors.white)),
-                ),
-              ),
-            ],
-          ),
+        // Allergies & Condition
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: const [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Allergies",
+                    style:
+                    TextStyle(fontSize: 12, color: Colors.black54)),
+                Text("N/A",
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Condition",
+                    style:
+                    TextStyle(fontSize: 12, color: Colors.black54)),
+                Text("Unknown",
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ],
+        ),
 
-          const SizedBox(height: 12),
+        const SizedBox(height: 16),
 
-          // Buttons Row 2
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.call),
-                  label: const Text("Call"),
+        // Buttons Row 1
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
+                onPressed: () {},
+                icon: const Icon(Icons.local_hospital),
+                label: const Text("Notify Hospital"),
               ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.navigation),
-                  label: const Text("Map"),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
+                onPressed: () {
+                  onComplete(tripData);
+                },
+                icon: const Icon(Icons.check, color: Colors.white),
+                label: const Text("Mark as Completed",
+                    style: TextStyle(color: Colors.white)),
               ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text("QR Scan"),
-                ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // Buttons Row 2
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.call),
+                label: const Text("Call"),
               ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.navigation),
+                label: const Text("Map"),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.qr_code_scanner),
+                label: const Text("QR Scan"),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
 }

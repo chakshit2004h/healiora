@@ -192,4 +192,45 @@ class AuthService {
     }
   }
 
+  Future<Map<String, dynamic>?> getDoctorProfile() async {
+    final token = await _storage.read(key: 'token');
+    if (token == null) return null;
+
+    final url = Uri.parse('$baseUrl/doctors/doctors/me'); // ✅ Doctor profile API
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      print("❌ Failed to fetch doctor profile: ${response.statusCode} | ${response.body}");
+      return null;
+    }
+  }
+  Future<Map<String, dynamic>?> getAmbulanceProfile() async {
+    final token = await _storage.read(key: 'token');
+    if (token == null) return null;
+
+    final url = Uri.parse('$baseUrl/ambulances/ambulances/me');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      print("❌ Failed to fetch ambulance profile: ${response.statusCode} | ${response.body}");
+      return null;
+    }
+  }
+
 }

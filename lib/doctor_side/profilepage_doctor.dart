@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_services.dart';
+
 class DoctorProfilePage extends StatefulWidget {
   const DoctorProfilePage({super.key});
 
@@ -9,9 +11,39 @@ class DoctorProfilePage extends StatefulWidget {
 
 class _DoctorProfilePageState extends State<DoctorProfilePage> {
   bool emergencyAlerts = false;
+  Map<String, dynamic>? doctorProfile;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final profile = await AuthService().getDoctorProfile();
+    if (mounted) {
+      setState(() {
+        doctorProfile = profile;
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (doctorProfile == null) {
+      return const Scaffold(
+        body: Center(child: Text("Failed to load profile")),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -37,9 +69,9 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8.0),
-                    child: const CircleAvatar(
+                  const Padding(
+                    padding: EdgeInsets.only(left: 8.0),
+                    child: CircleAvatar(
                       radius: 28,
                       backgroundImage: AssetImage("assets/doctor.png"),
                     ),
@@ -51,55 +83,57 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
                       children: [
                         Row(
                           children: [
-                            const Text(
-                              "Dr. Ananya Mehta",
-                              style: TextStyle(
+                            Text(
+                              "${doctorProfile!['name'] ?? 'Unknown'}",
+                              style: const TextStyle(
                                   fontWeight: FontWeight.bold, fontSize: 16),
                             ),
                             const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Text(
-                                "Verified",
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.blue,
-                                  fontWeight: FontWeight.w500,
+                            if (doctorProfile!['verified'] == true)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Text(
+                                  "Verified",
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                         const SizedBox(height: 4),
-                        const Text("Emergency Medicine",
-                            style: TextStyle(
+                        Text(doctorProfile!['specialization'] ?? "Emergency Medicine",
+                            style: const TextStyle(
                                 color: Colors.black87, fontSize: 13)),
-                        const Text("Fortis Hospital, Chandigarh",
-                            style: TextStyle(
+                        Text(
+                            "${doctorProfile!['hospital'] ?? 'Fortis Hospital'}, ${doctorProfile!['location'] ?? 'Chandigarh'}",
+                            style: const TextStyle(
                                 color: Colors.black54, fontSize: 12)),
                         const SizedBox(height: 12),
                         Row(
-                          children: const [
-                            Icon(Icons.email_outlined,
+                          children: [
+                            const Icon(Icons.email_outlined,
                                 size: 16, color: Colors.black54),
-                            SizedBox(width: 6),
-                            Text("ananya.mehta@fortis.in",
-                                style: TextStyle(fontSize: 13)),
+                            const SizedBox(width: 6),
+                            Text(doctorProfile!['email'] ?? "N/A",
+                                style: const TextStyle(fontSize: 13)),
                           ],
                         ),
                         const SizedBox(height: 6),
                         Row(
-                          children: const [
-                            Icon(Icons.phone_outlined,
+                          children: [
+                            const Icon(Icons.phone_outlined,
                                 size: 16, color: Colors.black54),
-                            SizedBox(width: 6),
-                            Text("+91 98765 43210",
-                                style: TextStyle(fontSize: 13)),
+                            const SizedBox(width: 6),
+                            Text(doctorProfile!['phone_number'] ?? "N/A",
+                                style: const TextStyle(fontSize: 13)),
                           ],
                         ),
                       ],
@@ -111,12 +145,13 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
             const SizedBox(height: 20),
 
             _sectionTitle("Professional details"),
-            _card(_infoRow(Icons.badge_outlined,
-                "Registration / License No.", "MC-CH-2021-00987")),
+            _card(_infoRow(Icons.badge_outlined, "Registration / License No.",
+                doctorProfile!['registration_number'] ?? "N/A")),
             _card(_infoRow(Icons.school_outlined, "Qualifications",
-                "MBBS, MD (Emergency Medicine)")),
+                doctorProfile!['education'] ?? "N/A")),
             _card(_infoRow(Icons.local_hospital_outlined,
-                "Hospital / Department", "Fortis Hospital / Emergency Medicine")),
+                "Hospital / Department",
+                "${doctorProfile!['hospital'] ?? 'N/A'} / ${doctorProfile!['specialization'] ?? 'N/A'}")),
 
             const SizedBox(height: 20),
 
@@ -160,7 +195,9 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
             const Divider(thickness: 1),
             Center(
               child: TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  // TODO: Add logout logic here
+                },
                 child: const Text("Logout",
                     style:
                     TextStyle(color: Colors.red, fontWeight: FontWeight.w500)),

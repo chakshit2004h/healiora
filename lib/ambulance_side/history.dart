@@ -1,21 +1,80 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class History extends StatefulWidget {
-  final List<Map<String, dynamic>> historyTrips;
-  const History({super.key, required this.historyTrips});
+  const History({super.key});
 
   @override
   State<History> createState() => _HistoryState();
 }
 
 class _HistoryState extends State<History> {
+  List<Map<String, dynamic>> _historyTrips = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAssignedPatients();
+  }
+
+  Future<void> _fetchAssignedPatients() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+            "https://healiorabackend.rawcode.online/api/v1/patient-assignments/me-assigned-patients"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer YOUR_TOKEN_HERE", // 🔑 add auth token here
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        setState(() {
+          // Adapt this parsing based on your API response format
+          _historyTrips = List<Map<String, dynamic>>.from(data["items"].map((p) {
+            return {
+              "tripId": p["id"].toString(),
+              "patientId": p["patient"]["id"].toString(),
+              "urgency": p["urgency"] ?? "Normal",
+              "address": p["patient"]["address"] ?? "Unknown",
+              "time": p["created_at"] ?? "",
+            };
+          }));
+          _loading = false;
+        });
+      } else {
+        setState(() {
+          _loading = false;
+        });
+        print("Failed: ${response.body}");
+      }
+    } catch (e) {
+      setState(() {
+        _loading = false;
+      });
+      print("Error: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_historyTrips.isEmpty) {
+      return const Center(child: Text("No assigned patients yet"));
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(12),
-      itemCount: widget.historyTrips.length,
+      itemCount: _historyTrips.length,
       itemBuilder: (context, index) {
-        final trip = widget.historyTrips[index];
+        final trip = _historyTrips[index];
         return Card(
           color: Colors.white,
           elevation: 5,

@@ -4,6 +4,7 @@ import 'package:healiora/doctor_side/patientpage_doctor.dart';
 import 'package:healiora/doctor_side/profilepage_doctor.dart';
 import 'package:healiora/doctor_side/schedule_doctor.dart';
 import 'package:healiora/doctor_side/socket.dart';
+import 'package:healiora/mainPage/profile.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -26,21 +27,30 @@ class HospitalDashboard extends StatefulWidget {
 
 class _HospitalDashboardState extends State<HospitalDashboard> {
   int _currentIndex = 0;
+  String? doctorName;
 
   /// Pages corresponding to each bottom tab.
-  final List<Widget> _pages = [
-    const DashboardScreen(),
-    const PatientpageDoctor(),
-    const PatientRecordsPage(patientName: '',),
-    const DoctorProfilePage(),
-  ];
   late AmbulanceDoctorService doctorSocket;
 
   @override
   void initState() {
     super.initState();
+    _initDoctorProfile();
     _initSocket(); // ✅ kick off async work
   }
+  Future<void> _initDoctorProfile() async {
+    try {
+      final profile = await AuthService().getDoctorProfile();
+      if (profile != null) {
+        setState(() {
+          doctorName = profile["name"] ?? "Doctor"; // adjust key as per API
+        });
+      }
+    } catch (e) {
+      print("❌ Failed to load doctor profile: $e");
+    }
+  }
+
   Future<void> downloadPdf(String url, String fileName) async {
     try {
       if (Platform.isAndroid) {
@@ -143,9 +153,15 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      DashboardScreen(doctorName: doctorName ?? "Doctor"), // ✅ now safe
+      const PatientpageDoctor(),
+      const PatientRecordsPage(patientName: ''),
+      const DoctorProfilePage(),
+    ];
     return Scaffold(
       backgroundColor: Colors.white,
-      body: _pages[_currentIndex],
+      body: pages[_currentIndex],
 
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.white,
@@ -178,7 +194,8 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
 
 /// The main dashboard layout, styled to match your design.
 class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key});
+  final String doctorName;
+  const DashboardScreen({super.key, required this.doctorName});
 
   @override
   @override
@@ -239,7 +256,7 @@ class DashboardScreen extends StatelessWidget {
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
                   "Good Morning",
                   style: TextStyle(
@@ -248,18 +265,10 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  "Dr. Smith",
+                  "$doctorName",
                   style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
               ],
-            ),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.green,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.person, color: Colors.white),
             ),
           ],
         ),
