@@ -156,7 +156,6 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
     final pages = [
       DashboardScreen(doctorName: doctorName ?? "Doctor"), // ✅ now safe
       const PatientpageDoctor(),
-      const PatientRecordsPage(patientName: ''),
       const DoctorProfilePage(),
     ];
     return Scaffold(
@@ -175,19 +174,9 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.people), label: "Patients"),
-          BottomNavigationBarItem(icon: Icon(Icons.document_scanner_outlined), label: "Records"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),
-
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.green,
-        onPressed: () {
-          // Handle alerts action
-        },
-        child: const Icon(Icons.notifications,color: Colors.white,),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 }
@@ -258,7 +247,7 @@ class DashboardScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Good Morning",
+                  getGreetingMessage(),
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -278,10 +267,9 @@ class DashboardScreen extends StatelessWidget {
 
   Widget _buildOverviewCardsRow() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _overviewCard(Icons.warning, "SOS Alerts", "3", Colors.red.shade50, Colors.red),
-        _overviewCard(Icons.calendar_today, "Appointments", "8", Colors.green.shade50, Colors.green),
         _overviewCard(Icons.people, "Patients", "24", Colors.blue.shade50, Colors.blue),
       ],
     );
@@ -417,4 +405,18 @@ class DashboardScreen extends StatelessWidget {
       ),
     );
   }
+  String getGreetingMessage() {
+    final hour = DateTime.now().hour;
+
+    if (hour < 12) {
+      return "Good Morning";
+    } else if (hour < 17) {
+      return "Good Afternoon";
+    } else if (hour < 21) {
+      return "Good Evening";
+    } else {
+      return "Good Night";
+    }
+  }
+
 }
