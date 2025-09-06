@@ -70,133 +70,35 @@ class _MedicalDetailsPageState extends State<MedicalDetailsPage> {
           build: (pw.Context context) {
             return [
               // Header
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Row(
-                    children: [
-                      pw.Icon(pw.IconData(0xe87c), size: 20, color: PdfColors.red),
-                      pw.SizedBox(width: 8),
-                      pw.Text(
-                        "Patient Record – $userName",
-                        style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  pw.Container(
-                    padding: pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: pw.BoxDecoration(
-                      color: PdfColors.black,
-                      borderRadius: pw.BorderRadius.circular(6),
-                    ),
-                    child: pw.Text(
-                      "Download PDF",
-                      style: pw.TextStyle(color: PdfColors.white, fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-              pw.SizedBox(height: 4),
-              pw.Text(
-                "Auto-shared via SOS alert",
-                style: pw.TextStyle(color: PdfColors.grey600, fontSize: 10),
-              ),
-              pw.SizedBox(height: 16),
-
-              // Tabs Row (Blood, Allergies, Meds)
-              pw.Container(
-                color: PdfColors.blue900,
-                padding: pw.EdgeInsets.all(8),
-                child: pw.Row(
-                  children: [
-                    _buildTag("BLOOD", PdfColors.red, PdfColors.white),
-                    pw.SizedBox(width: 8),
-                    _buildTag("ALLERGIES", PdfColors.grey700, PdfColors.white),
-                    pw.SizedBox(width: 8),
-                    _buildTag("Penicillin", PdfColors.red, PdfColors.white),
-                    pw.SizedBox(width: 8),
-                    _buildTag("MEDS 2 current", PdfColors.blue, PdfColors.white),
-                  ],
-                ),
-              ),
+              pw.Text("Patient Record – $userName",
+                  style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 20),
 
-              // Patient Info + Address
-              pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Expanded(
-                    child: _buildBoxedSection("Patient Info", [
-                      _infoRow("Name", userName),
-                      _infoRow("Age / Gender", "$userAge - $userGender"),
-                      _infoRow("Occupation", "Factory Supervisor"),
-                    ]),
-                  ),
-                  pw.SizedBox(width: 16),
-                  pw.Expanded(
-                    child: _buildBoxedSection("Location / Address", [
-                      _infoRow("Address", "221B Baker Street"),
-                      _infoRow("City", "London"),
-                      _infoRow("Addictions", "Smoking"),
-                    ]),
-                  ),
-                ],
-              ),
+              // Patient Info
+              _buildBoxedSection("Patient Info", [
+                _infoRow("Name", userName),
+                _infoRow("Age / Gender", "$userAge - $userGender"),
+                _infoRow("Date of Birth", dobController.text),
+                _infoRow("Blood Group", bloodGroupController.text),
+              ]),
+
               pw.SizedBox(height: 16),
 
-              // Current Medications + Chronic Conditions
-              pw.Row(
-                children: [
-                  pw.Expanded(
-                    child: _buildBoxedSection("Current Medications", [
-                      pw.Bullet(text: "Insulin"),
-                      pw.Bullet(text: "Warfarin"),
-                    ]),
-                  ),
-                  pw.SizedBox(width: 16),
-                  pw.Expanded(
-                    child: _buildBoxedSection("Chronic Conditions", [
-                      pw.Bullet(text: "Diabetes"),
-                      pw.Bullet(text: "Asthma"),
-                    ]),
-                  ),
-                ],
-              ),
+              // Medical Details
+              _buildBoxedSection("Medical Details", [
+                _infoRow("Past Surgeries", pastSurgeriesController.text),
+                _infoRow("Long-term Medications", longTermMedsController.text),
+                _infoRow("Ongoing Illnesses", ongoingIllnessesController.text),
+                _infoRow("Allergies", allergiesController.text),
+                _infoRow("Other Issues", otherIssuesController.text),
+              ]),
+
               pw.SizedBox(height: 16),
 
               // Emergency Contact
               _buildBoxedSection("Emergency Contact", [
-                _infoRow("Name", "Jamie Johnson"),
-                _infoRow("Relation", "Spouse"),
-                _infoRow("Phone", "+1 555-2222"),
-              ], color: PdfColors.red50),
-
-              pw.SizedBox(height: 16),
-
-              // Past Diagnoses
-              _buildBoxedSection("Past Diagnoses / Major Illnesses", [
-                _infoRow("Asthma", "Apr 3, 2018"),
-                _infoRow("Hypertension", "Aug 12, 2020"),
-                _infoRow("Diabetes Type 2", "Jan 18, 2022"),
-              ]),
-
-              pw.SizedBox(height: 16),
-
-              // Immunizations
-              _buildBoxedSection("Immunizations & Preventive Care", [
-                pw.Text("No immunization data."),
-              ]),
-
-              pw.SizedBox(height: 16),
-
-              // Hospitalizations
-              _buildBoxedSection("Other (Previous Hospitalizations)", [
-                pw.Bullet(
-                    text:
-                    "St. Mary’s General Hospital, London: admitted for stroke on Jan 12, 2023, discharged Jan 18, 2023."),
-                pw.Bullet(
-                    text:
-                    "City Care Hospital, London: admitted for asthma exacerbation on Jun 1, 2021, discharged Jun 3, 2021."),
+                _infoRow("Name", emergencyContactNameController.text),
+                _infoRow("Phone", emergencyContactNumberController.text),
               ]),
             ];
           },

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:healiora/doctor_side/hospital_dashboard.dart';
-import 'package:healiora/doctor_side/schedule_doctor.dart';
+import '../services/auth_services.dart';
 
 class PatientpageDoctor extends StatefulWidget {
   const PatientpageDoctor({super.key});
@@ -10,277 +9,154 @@ class PatientpageDoctor extends StatefulWidget {
 }
 
 class _PatientpageDoctorState extends State<PatientpageDoctor> {
-  String selectedFilter = "All";
-  String searchQuery = "";
-
-  final List<Map<String, dynamic>> patients = [
-    {
-      "initials": "AJ",
-      "name": "Alex Johnson",
-      "hospitalId": "SHG-842",
-      "caseCode": "HST-AXJ-01",
-      "status": "Stable",
-      "statusColor": Colors.green,
-    },
-    {
-      "initials": "MS",
-      "name": "Maria Santos",
-      "hospitalId": "SHG-913",
-      "caseCode": "HST-MRS-11",
-      "status": "Emergency",
-      "statusColor": Colors.red,
-    },
-    {
-      "initials": "IK",
-      "name": "Ibrahim Khan",
-      "hospitalId": "SHG-221",
-      "caseCode": "HST-IBK-07",
-      "status": "Under Observation",
-      "statusColor": Colors.orange,
-    },
-    {
-      "initials": "PP",
-      "name": "Priya Patel",
-      "hospitalId": "SHG-377",
-      "caseCode": "HST-PPT-02",
-      "status": "Stable",
-      "statusColor": Colors.green,
-    },
-  ];
+  List<dynamic> patients = [];
+  bool isLoading = true;
 
   @override
-  Widget build(BuildContext context) {
-    /// Apply filtering
-    final filteredPatients = patients.where((p) {
-      final matchesFilter = selectedFilter == "All" ||
-          p["status"].toString().toLowerCase() ==
-              selectedFilter.toLowerCase() ||
-          (selectedFilter == "Observation" &&
-              p["status"] == "Under Observation");
-
-      final matchesSearch = searchQuery.isEmpty ||
-          p["name"].toString().toLowerCase().contains(searchQuery.toLowerCase()) ||
-          p["hospitalId"].toString().toLowerCase().contains(searchQuery.toLowerCase()) ||
-          p["caseCode"].toString().toLowerCase().contains(searchQuery.toLowerCase());
-
-      return matchesFilter && matchesSearch;
-    }).toList();
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          title: const Text(
-            "My Patients",
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pushReplacement(context,
-                    MaterialPageRoute(builder: (context) => HospitalDashboard()));
-              },
-              child: const Text(
-                "Dashboard",
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Patients assigned by St. Helena General",
-              style: TextStyle(color: Colors.black54, fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-
-            /// Search Bar + Filter Dropdown
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    onChanged: (val) {
-                      setState(() => searchQuery = val);
-                    },
-                    decoration: InputDecoration(
-                      hintText: "Search by name, ID, or hospital code",
-                      contentPadding:
-                      const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Colors.grey),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: selectedFilter,
-                      items: const [
-                        DropdownMenuItem(value: "All", child: Text("All")),
-                        DropdownMenuItem(value: "Stable", child: Text("Stable")),
-                        DropdownMenuItem(value: "Emergency", child: Text("Emergency")),
-                        DropdownMenuItem(
-                            value: "Observation", child: Text("Observation")),
-                      ],
-                      onChanged: (value) {
-                        setState(() => selectedFilter = value!);
-                      },
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            /// Patients List
-            Expanded(
-              child: filteredPatients.isEmpty
-                  ? const Center(
-                child: Text("No patients found"),
-              )
-                  : ListView.builder(
-                itemCount: filteredPatients.length,
-                itemBuilder: (context, index) {
-                  final p = filteredPatients[index];
-                  return PatientCard(
-                    initials: p["initials"],
-                    name: p["name"],
-                    hospitalId: p["hospitalId"],
-                    caseCode: p["caseCode"],
-                    status: p["status"],
-                    statusColor: p["statusColor"],
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  void initState() {
+    super.initState();
+    fetchPatients();
   }
-}
 
-/// Patient card widget
-class PatientCard extends StatelessWidget {
-  final String initials;
-  final String name;
-  final String hospitalId;
-  final String caseCode;
-  final String status;
-  final Color statusColor;
-
-  const PatientCard({
-    super.key,
-    required this.initials,
-    required this.name,
-    required this.hospitalId,
-    required this.caseCode,
-    required this.status,
-    required this.statusColor,
-  });
+  Future<void> fetchPatients() async {
+    try {
+      final result = await AuthService().getAssignedPatients();
+      setState(() {
+        patients = result;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() => isLoading = false);
+      print("❌ Error fetching patients: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue.shade100),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Assigned Patients"),
+        elevation: 2,
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: Colors.blue.shade100,
-            child: Text(
-              initials,
-              style: const TextStyle(
-                color: Colors.blue,
-                fontWeight: FontWeight.bold,
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : patients.isEmpty
+          ? const Center(child: Text("No patients assigned"))
+          : ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: patients.length,
+        itemBuilder: (context, index) {
+          final patient = patients[index];
+          return Card(
+            elevation: 4,
+            shadowColor: Colors.blueAccent.withOpacity(0.3),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Name + Priority
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const CircleAvatar(
+                            radius: 24,
+                            backgroundColor: Colors.blueAccent,
+                            child: Icon(Icons.person,
+                                color: Colors.white, size: 28),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            patient["patient_name"] ?? "Unknown",
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Chip(
+                        label: Text(
+                          patient["priority_level"] ?? "Normal",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        backgroundColor: (patient["priority_level"] ==
+                            "High")
+                            ? Colors.red
+                            : Colors.green,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Age + Gender row
+                  Row(
+                    children: [
+                      const Icon(Icons.cake,
+                          size: 18, color: Colors.grey),
+                      const SizedBox(width: 6),
+                      Text(
+                        "Age: ${patient["patient_age"] ?? "N/A"}",
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(width: 20),
+                      const Icon(Icons.wc,
+                          size: 18, color: Colors.grey),
+                      const SizedBox(width: 6),
+                      Text(
+                        "Gender: ${patient["patient_gender"] ?? "N/A"}",
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Action Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () {
+                          // 👉 Navigate to details page
+                        },
+                        icon: const Icon(Icons.info_outline,
+                            size: 18, color: Colors.blueAccent),
+                        label: const Text(
+                          "Details",
+                          style:
+                          TextStyle(color: Colors.blueAccent),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          // 👉 Maybe start consultation
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.medical_information,color: Colors.white,
+                            size: 18),
+                        label: const Text("Consult",style: TextStyle(color: Colors.white),),
+                      ),
+                    ],
+                  )
+                ],
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 4),
-                Text("Hospital ID: $hospitalId",
-                    style: const TextStyle(color: Colors.black54, fontSize: 13)),
-                Text("Case Code: $caseCode",
-                    style: const TextStyle(color: Colors.black54, fontSize: 13)),
-              ],
-            ),
-          ),
-
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  status,
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PatientRecordsPage(patientName: name),
-                    ),
-                  );
-                },
-                child: const Text("View Records", style: TextStyle(color: Colors.white)),
-              ),
-
-            ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }

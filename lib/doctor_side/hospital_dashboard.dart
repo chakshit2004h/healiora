@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:healiora/doctor_side/patientpage_doctor.dart';
 import 'package:healiora/doctor_side/profilepage_doctor.dart';
@@ -31,6 +32,7 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
 
   /// Pages corresponding to each bottom tab.
   late AmbulanceDoctorService doctorSocket;
+  List<Map<String, dynamic>> sosAlerts = [];
 
   @override
   void initState() {
@@ -99,10 +101,23 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
       await doctorSocket.init();
 
       // ✅ listen for hospital events
-      doctorSocket.on("doctor_case_assigned", (data) {
+      doctorSocket.on("doctor_case_assigned", (data) async {
         print("🚨 SOS ALERT received: $data");
 
         if (!mounted) return;
+        setState(() {
+          sosAlerts.insert(0, {
+            "name": data['patientName'] ?? "Unknown Patient",
+            "age": data['age'] ?? "N/A",
+            "condition": data['condition'] ?? "Emergency case",
+            "location": data['location'] ?? "Unknown",
+            "time": DateTime.now(),
+          });
+        });
+
+        // ✅ Play SOS sound
+        final player = AudioPlayer();
+        await player.play(AssetSource("sounds/sos_alert.mp3"));
 
         // Show dialog instead of SnackBar
         showDialog(
@@ -154,7 +169,7 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      DashboardScreen(doctorName: doctorName ?? "Doctor"), // ✅ now safe
+      DashboardScreen(doctorName: doctorName ?? "Doctor",sosAlerts: sosAlerts,), // ✅ now safe
       const PatientpageDoctor(),
       const DoctorProfilePage(),
     ];
@@ -184,7 +199,8 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
 /// The main dashboard layout, styled to match your design.
 class DashboardScreen extends StatelessWidget {
   final String doctorName;
-  const DashboardScreen({super.key, required this.doctorName});
+  final List<Map<String, dynamic>> sosAlerts;
+  const DashboardScreen({super.key, required this.doctorName, required this.sosAlerts});
 
   @override
   @override
@@ -215,12 +231,7 @@ class DashboardScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   _buildUrgentHeader(),
                   const SizedBox(height: 12),
-                  _buildUrgentAlertCard(),
-                  const SizedBox(height: 12),
-                  _buildUrgentAlertCard(),
-                  const SizedBox(height: 12),
-                  _buildUrgentAlertCard(),
-                  const SizedBox(height: 12),
+                  _buildUrgentAlertsList(),
                 ],
               ),
             ),
@@ -269,7 +280,7 @@ class DashboardScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _overviewCard(Icons.warning, "SOS Alerts", "3", Colors.red.shade50, Colors.red),
+        _overviewCard(Icons.warning, "SOS Alerts", "${sosAlerts.length}", Colors.red.shade50, Colors.red),
         _overviewCard(Icons.people, "Patients", "24", Colors.blue.shade50, Colors.blue),
       ],
     );
@@ -289,17 +300,34 @@ class DashboardScreen extends StatelessWidget {
             color: Colors.red,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Text(
-            "3 Active",
-            style: TextStyle(color: Colors.white, fontSize: 12),
+          child: Text(
+            "${sosAlerts.length} Active", // ✅ dynamic count
+            style: const TextStyle(color: Colors.white, fontSize: 12),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildUrgentAlertCard() {
+  Widget _buildUrgentAlertsList() {
+    if (sosAlerts.isEmpty) {
+      return const Text("✅ No active SOS alerts right now");
+    }
+    return Column(
+      children: sosAlerts.map((alert) {
+        return _buildUrgentAlertCard(
+          alert["name"],
+          alert["age"],
+          alert["condition"],
+          alert["time"],
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildUrgentAlertCard(String name, String age, String condition, DateTime time) {
     return Container(
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -315,16 +343,30 @@ class DashboardScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildAlertHeader(),
-          const SizedBox(height: 8),
-          _buildCriticalTag(),
-          const SizedBox(height: 8),
-          const Text(
-            "Chest pain, difficulty breathing",
-            style: TextStyle(color: Colors.black87),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text("($age y)", style: const TextStyle(color: Colors.grey)),
+            ],
           ),
           const SizedBox(height: 8),
-          _buildTimestamp(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
+            child: const Text("CRITICAL", style: TextStyle(color: Colors.white, fontSize: 12)),
+          ),
+          const SizedBox(height: 8),
+          Text(condition, style: const TextStyle(color: Colors.black87)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.access_time, size: 16, color: Colors.grey),
+              const SizedBox(width: 4),
+              Text("${DateTime.now().difference(time).inMinutes} min ago",
+                  style: const TextStyle(color: Colors.grey)),
+            ],
+          ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -334,13 +376,14 @@ class DashboardScreen extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               onPressed: () {},
-              child: const Text("View Details",style: TextStyle(color: Colors.white),),
+              child: const Text("View Details", style: TextStyle(color: Colors.white)),
             ),
           ),
         ],
       ),
     );
   }
+
 
   Widget _buildAlertHeader() {
     return Row(

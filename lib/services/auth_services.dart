@@ -232,5 +232,24 @@ class AuthService {
       return null;
     }
   }
+  Future<List<dynamic>> getAssignedPatients() async {
+    final token = await getToken();
+    if (token == null) throw Exception("No token found");
 
+    final url = Uri.parse("$baseUrl/patient-assignments/me/assigned-patients");
+
+    final response = await http.get(
+      url,
+      headers: {"Authorization": "Bearer $token"},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+
+      // ✅ API already returns a list, so just return it
+      return data;
+    } else {
+      throw Exception("Failed to fetch patients: ${response.statusCode}");
+    }
+  }
 }
