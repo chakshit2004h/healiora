@@ -252,4 +252,27 @@ class AuthService {
       throw Exception("Failed to fetch patients: ${response.statusCode}");
     }
   }
+  Future<List<dynamic>> getAssignedPatientsByAmbulance(String ambulanceId) async {
+    final token = await getToken();
+    if (token == null) throw Exception("No token found");
+
+    final response = await http.get(
+      Uri.parse("$baseUrl/patient-assignments/me/assigned-patients"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token", // 🔑 keep token
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic>data = json.decode(response.body);
+
+      // Optionally, filter by ambulanceId if backend returns ambulance info
+      // For now, just return the same list
+      return data;
+    } else {
+      throw Exception("Failed to fetch patients for ambulance");
+    }
+  }
+
 }

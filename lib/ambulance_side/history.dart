@@ -1,6 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import '../services/auth_services.dart';
 
 class History extends StatefulWidget {
   const History({super.key});
@@ -10,142 +9,173 @@ class History extends StatefulWidget {
 }
 
 class _HistoryState extends State<History> {
-  List<Map<String, dynamic>> _historyTrips = [];
-  bool _loading = true;
+  List<dynamic> patients = [];
+  bool isLoading = true;
+  String? ambulanceId;
 
   @override
   void initState() {
     super.initState();
-    _fetchAssignedPatients();
+    _initData();
   }
 
-  Future<void> _fetchAssignedPatients() async {
+  // Initialize ambulance ID and fetch patients
+  Future<void> _initData() async {
+    setState(() => isLoading = true);
+
+    // 1️⃣ Get ambulance profile
+    final profile = await AuthService().getAmbulanceProfile();
+    if (profile != null && profile["id"] != null) {
+      ambulanceId = profile["id"].toString();
+    } else {
+      ambulanceId = null;
+      print("❌ Ambulance ID not found");
+    }
+
+    // 2️⃣ Fetch patients if ambulanceId exists
+    if (ambulanceId != null) {
+      await fetchPatients();
+    } else {
+      setState(() => isLoading = false);
+    }
+  }
+  // Fetch patients assigned to this ambulance
+  Future<void> fetchPatients() async {
     try {
-      final response = await http.get(
-        Uri.parse(
-            "https://healiorabackend.rawcode.online/api/v1/patient-assignments/me-assigned-patients"),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer YOUR_TOKEN_HERE", // 🔑 add auth token here
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        setState(() {
-          // Adapt this parsing based on your API response format
-          _historyTrips = List<Map<String, dynamic>>.from(data["items"].map((p) {
-            return {
-              "tripId": p["id"].toString(),
-              "patientId": p["patient"]["id"].toString(),
-              "urgency": p["urgency"] ?? "Normal",
-              "address": p["patient"]["address"] ?? "Unknown",
-              "time": p["created_at"] ?? "",
-            };
-          }));
-          _loading = false;
-        });
-      } else {
-        setState(() {
-          _loading = false;
-        });
-        print("Failed: ${response.body}");
-      }
-    } catch (e) {
+      final result = await AuthService().getAssignedPatientsByAmbulance(ambulanceId!);
       setState(() {
-        _loading = false;
+        patients = result;
+        isLoading = false;
       });
-      print("Error: $e");
+    } catch (e) {
+      setState(() => isLoading = false);
+      print("❌ Error fetching patients: $e");
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : patients.isEmpty
+          ? const Center(child: Text("No patients assigned"))
+          : ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: patients.length,
+        itemBuilder: (context, index) {
+          final patient = patients[index];
+          return Card(
+            elevation: 4,
+            shadowColor: Colors.blueAccent.withOpacity(0.3),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Name + Priority
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const CircleAvatar(
+                            radius: 24,
+                            backgroundColor: Colors.blueAccent,
+                            child: Icon(Icons.person,
+                                color: Colors.white, size: 28),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            patient["patient_name"] ?? "Unknown",
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Chip(
+                        label: Text(
+                          patient["priority_level"] ?? "Normal",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        backgroundColor: (patient["priority_level"] == "High")
+                            ? Colors.red
+                            : Colors.green,
+                      ),
+                    ],
+                  ),
 
-    if (_historyTrips.isEmpty) {
-      return const Center(child: Text("No assigned patients yet"));
-    }
+                  const SizedBox(height: 12),
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: _historyTrips.length,
-      itemBuilder: (context, index) {
-        final trip = _historyTrips[index];
-        return Card(
-          color: Colors.white,
-          elevation: 5,
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: RichText(
-                        overflow: TextOverflow.ellipsis,
-                        text: TextSpan(
-                          style: const TextStyle(color: Colors.black),
-                          children: [
-                            const TextSpan(
-                                text: "Trip ",
-                                style: TextStyle(fontWeight: FontWeight.w500)),
-                            TextSpan(
-                                text: trip["tripId"],
-                                style: const TextStyle(fontWeight: FontWeight.bold)),
-                            const TextSpan(text: " • Patient "),
-                            TextSpan(
-                                text: trip["patientId"],
-                                style: const TextStyle(fontWeight: FontWeight.bold)),
-                          ],
+                  // Age + Gender row
+                  Row(
+                    children: [
+                      const Icon(Icons.cake, size: 18, color: Colors.grey),
+                      const SizedBox(width: 6),
+                      Text(
+                        "Age: ${patient["patient_age"] ?? "N/A"}",
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(width: 20),
+                      const Icon(Icons.wc, size: 18, color: Colors.grey),
+                      const SizedBox(width: 6),
+                      Text(
+                        "Gender: ${patient["patient_gender"] ?? "N/A"}",
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Action Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () {
+                          // 👉 Navigate to details page
+                        },
+                        icon: const Icon(Icons.info_outline,
+                            size: 18, color: Colors.blueAccent),
+                        label: const Text(
+                          "Details",
+                          style: TextStyle(color: Colors.blueAccent),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          // 👉 Maybe start consultation
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.medical_information,
+                            color: Colors.white, size: 18),
+                        label: const Text(
+                          "Consult",
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
-                      child: Text(
-                        trip["urgency"],
-                        style: const TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on,
-                        size: 16, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text("${trip["address"]} → Nearest Hospital"),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  "${trip["time"]}",
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ],
+                    ],
+                  )
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
