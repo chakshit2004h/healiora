@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:healiora/mainPage/records.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -36,26 +37,41 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin{
   Future<void> _fetchNearbyHospitals() async {
     try {
       print("Requesting permission...");
-      LocationPermission permission = await Geolocator.requestPermission();
+      LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
-        print("Location permission denied");
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          print("❌ Location permission denied");
+          setState(() => _loadingHospitals = false);
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        print("❌ Location permissions permanently denied");
+        setState(() => _loadingHospitals = false);
         return;
       }
 
-      // print("Getting current position...");
-      // Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-      // print("Position obtained: ${position.latitude}, ${position.longitude}");
+      print("Getting current position...");
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      print("📍 Position obtained: ${position.latitude}, ${position.longitude}");
 
       print("Fetching hospitals...");
-      final hospitals = await AuthService().getNearbyHospitals(28.7041, 77.1025);
-      print("Hospitals fetched: $hospitals");
+      final hospitals = await AuthService().getNearbyHospitals(
+        position.latitude,
+        position.longitude,
+      );
+      print("✅ Hospitals fetched: $hospitals");
 
       setState(() {
         _nearbyHospitals = hospitals;
         _loadingHospitals = false;
       });
     } catch (e) {
-      print("Error fetching hospitals: $e");
+      print("❌ Error fetching hospitals: $e");
       setState(() => _loadingHospitals = false);
     }
   }
@@ -329,8 +345,20 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin{
 
   Widget _buildMedicalRecordsCard(BuildContext context) {
     return GestureDetector(
-      onTap: (){
-        Navigator.push(context,MaterialPageRoute(builder: (context)=> MedicalDetailsPage()));
+      onTap: () async {
+        final user = await AuthService().getUserData();
+        if (user != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => RecordsPage(),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Failed to load user data")),
+          );
+        }
       },
       child: Container(
         padding: EdgeInsets.all(16),
@@ -349,7 +377,6 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin{
                   Text("Your Medical Records", style: TextStyle(fontWeight: FontWeight.bold)),
                   Text("Tap to view emergency info & history"),
                   SizedBox(height: 4),
-                  Text("Last Updated: 12 Jul 2025", style: TextStyle(fontSize: 12, color: Colors.grey)),
                 ],
               ),
             ),
@@ -358,6 +385,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin{
       ),
     );
   }
+
 
   Widget _buildHospitalsCard() {
     return Container(

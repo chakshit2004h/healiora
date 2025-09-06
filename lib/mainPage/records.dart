@@ -1,6 +1,13 @@
+// records_page.dart
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:healiora/services/auth_services.dart';
+import 'package:pdf/pdf.dart';
 import '../sidePages/medical_record.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+
+import '../sidePages/user_card.dart';
 
 class RecordsPage extends StatefulWidget {
   @override
@@ -11,6 +18,7 @@ class _RecordsPageState extends State<RecordsPage> {
   final _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
   MedicalRecord? _record;
+  UserProfile? _user; // from same API as homepage
 
   bool _isLoading = true;
   bool _isCreating = false;
@@ -32,123 +40,297 @@ class _RecordsPageState extends State<RecordsPage> {
     'address' : TextEditingController(),
     'sugar' : TextEditingController(),
   };
+
   bool _smoking = false;
   bool _drinking = false;
   bool _sugar = false;
 
-  Widget _buildSwitch(String label, String field) {
-    return SwitchListTile(
-      title: Text(label),
-      value: field == "smoking"
-          ? _smoking
-          : field == "drinking"
-          ? _drinking
-          : _sugar,
-      onChanged: (val) {
-        setState(() {
-          if (field == "smoking") _smoking = val;
-          if (field == "drinking") _drinking = val;
-          if (field == "sugar") _sugar = val;
-        });
-      },
-    );
-  }
-
-
   @override
   void initState() {
     super.initState();
-    _loadMedicalRecord();
+    _loadAll();
   }
 
-  void _loadMedicalRecord() async {
+  Future<void> _loadAll() async {
+    setState(() => _isLoading = true);
+    await Future.wait([
+      _loadMedicalRecord(),
+      _loadUser(),   // ✅ both load together
+    ]);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+  }
+
+
+  Future<void> _loadUser() async {
+    try {
+      final u = await _authService.getUserData();
+      print("✅ User data loaded: $u");
+      if (!mounted) return;
+      setState(() => _user = u);
+    } catch (e) {
+      print("❌ Error loading user profile: $e");
+    }
+  }
+
+
+  Future<void> _loadMedicalRecord() async {
     try {
       final record = await _authService.getMedicalRecord();
-      if (!mounted) return; // ✅ Prevents setState after dispose
-
+      if (!mounted) return;
       setState(() {
         _record = record;
-        _isLoading = false;
+        if (record != null) {
+          // Prefill switches and controllers (keeps form consistent)
+          _controllers['dob']!.text = record.dateOfBirth;
+          _controllers['bloodGroup']!.text = record.bloodGroup;
+          _controllers['pastSurgeries']!.text = record.pastSurgeries;
+          _controllers['medications']!.text = record.longTermMedications;
+          _controllers['illnesses']!.text = record.ongoingIllnesses;
+          _controllers['allergies']!.text = record.allergies;
+          _controllers['otherIssues']!.text = record.otherIssues;
+          _controllers['emergencyName']!.text = record.emergencyContactName;
+          _controllers['emergencyNumber']!.text = record.emergencyContactNumber;
+          _controllers['occupation']!.text = record.occupation;
+          _controllers['addiction']!.text = record.addiction;
+          _controllers['address']!.text = record.address;
+          _smoking = record.smoking;
+          _drinking = record.drinking;
+          _sugar = record.sugar;
+        }
       });
     } catch (e) {
       print("❌ Error loading medical record: $e");
-      if (!mounted) return; // ✅ Prevents setState after dispose
-
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
+  @override
+  void dispose() {
+    _controllers.values.forEach((c) => c.dispose());
+    super.dispose();
+  }
+
+  Widget _buildSwitch(String label, bool value, ValueChanged<bool> onChanged) {
+    return SwitchListTile(
+      title: Text(label, style: TextStyle(fontSize: 14)),
+      value: value,
+      onChanged: onChanged,
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+    );
+  }
 
   void _submit() async {
-    if (_formKey.currentState!.validate()) {
-      final newRecord = MedicalRecord(
-        dateOfBirth: _controllers['dob']!.text,
-        bloodGroup: _controllers['bloodGroup']!.text,
-        pastSurgeries: _controllers['pastSurgeries']!.text,
-        longTermMedications: _controllers['medications']!.text,
-        ongoingIllnesses: _controllers['illnesses']!.text,
-        allergies: _controllers['allergies']!.text,
-        otherIssues: _controllers['otherIssues']!.text,
-        emergencyContactName: _controllers['emergencyName']!.text,
-        emergencyContactNumber: _controllers['emergencyNumber']!.text,
+    if (!_formKey.currentState!.validate()) return;
 
-        // new fields
-        occupation: _controllers['occupation']!.text,
-        addiction: _controllers['addiction']!.text,
-        address: _controllers['address']!.text,
-        smoking: _smoking,
-        drinking: _drinking,
-        sugar: _sugar,
+    final newRecord = MedicalRecord(
+      dateOfBirth: _controllers['dob']!.text,
+      bloodGroup: _controllers['bloodGroup']!.text,
+      pastSurgeries: _controllers['pastSurgeries']!.text,
+      longTermMedications: _controllers['medications']!.text,
+      ongoingIllnesses: _controllers['illnesses']!.text,
+      allergies: _controllers['allergies']!.text,
+      otherIssues: _controllers['otherIssues']!.text,
+      emergencyContactName: _controllers['emergencyName']!.text,
+      emergencyContactNumber: _controllers['emergencyNumber']!.text,
+      occupation: _controllers['occupation']!.text,
+      addiction: _controllers['addiction']!.text,
+      address: _controllers['address']!.text,
+      smoking: _smoking,
+      drinking: _drinking,
+      sugar: _sugar,
+    );
+
+    bool success;
+    if (_record == null) {
+      success = await _authService.createMedicalRecord(newRecord);
+    } else {
+      success = await _authService.updateMedicalRecord(newRecord);
+    }
+
+    if (success) {
+      setState(() {
+        _isCreating = false;
+      });
+      await _loadMedicalRecord();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('✅ Medical record saved successfully')),
       );
-
-      bool success;
-      if (_record == null) {
-        success = await _authService.createMedicalRecord(newRecord);
-      } else {
-        success = await _authService.updateMedicalRecord(newRecord);
-      }
-
-      if (success) {
-        setState(() {
-          _isCreating = false;
-        });
-        _loadMedicalRecord();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✅ Medical record saved successfully')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Failed to save medical record')),
-        );
-      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Failed to save medical record')),
+      );
     }
   }
 
+  // ---------- PDF Generation ----------
+  Future<void> _generatePdfAndShare() async {
+    final doc = pw.Document();
 
+    // Helper to convert bool to Yes/No
+    String yn(bool? v) => (v ?? false) ? "Yes" : "No";
 
+    final fullName = _user?.fullName ?? "Unknown";
+    final phone = _user?.phoneNumber ?? "";
+    final email = _user?.email ?? "";
+    final age = _user?.age?.toString() ?? "";
+    final gender = _user?.gender ?? "";
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: pw.EdgeInsets.all(24),
+        build: (pw.Context context) {
+          return [
+            pw.Container(
+              padding: pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                border: pw.Border(
+                  bottom: pw.BorderSide(color: PdfColors.grey300, width: 1),
+                ),
+              ),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Healiora', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                      pw.Text('Medical Record', style: pw.TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text('Date: ${DateTime.now().toLocal().toString().split(' ').first}', style: pw.TextStyle(fontSize: 10)),
+                      pw.Text('ID: ${_user?.id ?? ''}', style: pw.TextStyle(fontSize: 10)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            pw.SizedBox(height: 12),
+
+            // Personal details section
+            pw.Container(
+              padding: pw.EdgeInsets.all(8),
+              decoration: pw.BoxDecoration(
+                border: pw.Border(
+                  bottom: pw.BorderSide(color: PdfColors.grey300, width: 1),
+                ),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('Personal Details', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 8),
+                  pw.Row(
+                    children: [
+                      pw.Expanded(child: pw.Text('Name: $fullName')),
+                      pw.SizedBox(width: 10),
+                      pw.Expanded(child: pw.Text('Phone: $phone')),
+                    ],
+                  ),
+                  pw.SizedBox(height: 6),
+                  pw.Row(
+                    children: [
+                      pw.Expanded(child: pw.Text('Email: $email')),
+                      pw.SizedBox(width: 10),
+                      pw.Expanded(child: pw.Text('Age: $age  •  Gender: $gender')),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            pw.SizedBox(height: 16),
+
+            // Medical form fields - more 'real life' layout
+            pw.Container(
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('Medical Information', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 8),
+
+                  pw.Row(children: [
+                    pw.Expanded(child: pw.Text('Date of Birth: ${_record?.dateOfBirth ?? "Not specified"}')),
+                    pw.Expanded(child: pw.Text('Blood Group: ${_record?.bloodGroup ?? "Not specified"}')),
+                  ]),
+                  pw.SizedBox(height: 6),
+
+                  pw.Text('Allergies: ${_record?.allergies ?? "Not specified"}'),
+                  pw.SizedBox(height: 6),
+
+                  pw.Text('Current Medications: ${_record?.longTermMedications ?? "Not specified"}'),
+                  pw.SizedBox(height: 6),
+
+                  pw.Text('Major Surgeries / Conditions: ${((_record?.pastSurgeries ?? '') + ((_record?.ongoingIllnesses?.isNotEmpty ?? false) ? ', ' + (_record?.ongoingIllnesses ?? '') : '')).trim()}'),
+                  pw.SizedBox(height: 12),
+
+                  // Emergency Contact
+                  pw.Text('Emergency Contact', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 6),
+                  pw.Row(children: [
+                    pw.Expanded(child: pw.Text('Name: ${_record?.emergencyContactName ?? "Not specified"}')),
+                    pw.Expanded(child: pw.Text('Phone: ${_record?.emergencyContactNumber ?? "Not specified"}')),
+                  ]),
+
+                  pw.SizedBox(height: 12),
+
+                  // Occupation / Addiction / Address
+                  pw.Row(children: [
+                    pw.Expanded(child: pw.Text('Occupation: ${_record?.occupation ?? "Not specified"}')),
+                    pw.Expanded(child: pw.Text('Addiction: ${_record?.addiction?.isNotEmpty == true ? _record!.addiction : "None"}')),
+                  ]),
+                  pw.SizedBox(height: 6),
+                  pw.Text('Address: ${_record?.address ?? "Not specified"}'),
+
+                  pw.SizedBox(height: 12),
+
+                  // Boolean flags
+                  pw.Row(children: [
+                    pw.Expanded(child: pw.Text('Smoking: ${yn(_record?.smoking)}')),
+                    pw.Expanded(child: pw.Text('Drinking: ${yn(_record?.drinking)}')),
+                    pw.Expanded(child: pw.Text('Diabetes (Sugar): ${yn(_record?.sugar)}')),
+                  ]),
+                ],
+              ),
+            ),
+
+            pw.SizedBox(height: 20),
+
+            // Signature area
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Container(width: 200, child: pw.Column(children: [pw.Text('Patient signature:'), pw.SizedBox(height: 40), pw.Text('(Sign here)')])),
+                pw.Container(width: 200, child: pw.Column(children: [pw.Text('Doctor signature:'), pw.SizedBox(height: 40), pw.Text('(Sign here)')])),
+              ],
+            ),
+
+            pw.SizedBox(height: 12),
+            pw.Divider(),
+            pw.Text('This is a generated medical record. Please consult your doctor for clinical advice.', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey)),
+          ];
+        },
+      ),
+    );
+
+    final Uint8List bytes = await doc.save();
+    final filename = '${fullName.replaceAll(' ', '_')}_medical_record.pdf';
+    await Printing.sharePdf(bytes: bytes, filename: filename);
+  }
+
+  // ---------- UI builders ----------
   Widget _buildSection(String title, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        SizedBox(height: 2),
-        Text(
-          value.isNotEmpty ? value : "Not specified",
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
-          ),
-        ),
+        Text(title, style: TextStyle(fontSize: 13, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+        SizedBox(height: 4),
+        Text(value.isNotEmpty ? value : "Not specified", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black87)),
       ],
     );
   }
@@ -156,232 +338,175 @@ class _RecordsPageState extends State<RecordsPage> {
   Widget _buildRecordDisplay() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: Offset(0, 3),
+      child: Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: Offset(0, 3))],
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top teal border
-            Container(
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.tealAccent,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Emergency Information",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top teal border
+                Container(height: 6, decoration: BoxDecoration(color: Colors.tealAccent, borderRadius: BorderRadius.vertical(top: Radius.circular(12)))),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                      Text("Emergency Information", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Row(children: [
+                        TextButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _isCreating = true;
+                            });
+                          },
+                          icon: Icon(Icons.edit, size: 18),
+                          label: Text("Edit"),
+                          style: TextButton.styleFrom(foregroundColor: Colors.grey[700]),
                         ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            // Pre-fill fields with existing record data
-                            _controllers['dob']!.text = _record!.dateOfBirth;
-                            _controllers['bloodGroup']!.text = _record!.bloodGroup;
-                            _controllers['pastSurgeries']!.text = _record!.pastSurgeries;
-                            _controllers['medications']!.text = _record!.longTermMedications;
-                            _controllers['illnesses']!.text = _record!.ongoingIllnesses;
-                            _controllers['allergies']!.text = _record!.allergies;
-                            _controllers['otherIssues']!.text = _record!.otherIssues;
-                            _controllers['emergencyName']!.text = _record!.emergencyContactName;
-                            _controllers['emergencyNumber']!.text = _record!.emergencyContactNumber;
-                            _controllers['occupation']!.text = _record!.occupation;
-                            _controllers['addiction']!.text = _record!.addiction;
-                            _controllers['address']!.text = _record!.address;
-                            _smoking = _record!.smoking;
-                            _drinking = _record!.drinking;
-                            _sugar = _record!.sugar;
+                      ]),
+                    ]),
 
-                            _isCreating = true; // Switch to form mode
-                          });
-                        },
-                        icon: Icon(Icons.edit, size: 18),
-                        label: Text("Edit"),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.grey[700],
-                        ),
-                      ),
+                    SizedBox(height: 12),
+
+                    // Personal summary (uses _user)
+                    if (_user != null) ...[
+                      _buildSection("Name", _user!.fullName),
+                      SizedBox(height: 12),
+                      Row(children: [
+                        Expanded(child: _buildSection("Phone", _user!.phoneNumber)),
+                        SizedBox(width: 12),
+                        Expanded(child: _buildSection("Email", _user!.email)),
+                      ]),
+                      SizedBox(height: 12),
+                      Row(children: [
+                        Expanded(child: _buildSection("Age", _user!.age?.toString() ?? "")),
+                        SizedBox(width: 12),
+                        Expanded(child: _buildSection("Gender", _user!.gender ?? "")),
+                      ]),
+                      SizedBox(height: 16),
                     ],
-                  ),
 
-                  SizedBox(height: 8),
-
-                  // Blood Group & Last Updated
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
+                    // Medical details
+                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                       _buildSection("Blood Group", _record!.bloodGroup),
-                      _buildSection("Last Updated", "28 Jul 2025"),
-                    ],
-                  ),
-
-                  SizedBox(height: 16),
-
-                  _buildSection("Allergies", _record!.allergies),
-                  SizedBox(height: 12),
-
-                  _buildSection("Current Medications", _record!.longTermMedications),
-                  SizedBox(height: 12),
-
-                  _buildSection(
-                    "Major Surgeries / Conditions",
-                    "${_record!.pastSurgeries}${_record!.ongoingIllnesses.isNotEmpty ? ', ' + _record!.ongoingIllnesses : ''}",
-                  ),
-                  SizedBox(height: 12),
-
-                  // ✅ Emergency Contact
-                  _buildSection("Emergency Contact Name", _record!.emergencyContactName),
-                  SizedBox(height: 12),
-                  _buildSection("Emergency Contact Number", _record!.emergencyContactNumber),
-                  SizedBox(height: 16),
-
-                  // ✅ New Fields
-                  _buildSection("Occupation", _record!.occupation),
-                  SizedBox(height: 12),
-                  _buildSection("Addiction", _record!.addiction.isNotEmpty ? _record!.addiction : "None"),
-                  SizedBox(height: 12),
-                  _buildSection("Address", _record!.address),
-                  SizedBox(height: 16),
-
-                  // ✅ Boolean fields
-                  _buildSection("Smoking", _record!.smoking ? "Yes" : "No"),
-                  SizedBox(height: 12),
-                  _buildSection("Drinking", _record!.drinking ? "Yes" : "No"),
-                  SizedBox(height: 12),
-                  _buildSection("Diabetes (Sugar)", _record!.sugar ? "Yes" : "No"),
-                ],
-              ),
+                      _buildSection("Last Updated", "28 Jul 2025"), // you can replace with actual updatedAt if you have it
+                    ]),
+                    SizedBox(height: 16),
+                    _buildSection("Allergies", _record!.allergies),
+                    SizedBox(height: 12),
+                    _buildSection("Current Medications", _record!.longTermMedications),
+                    SizedBox(height: 12),
+                    _buildSection("Major Surgeries / Conditions", "${_record!.pastSurgeries}${_record!.ongoingIllnesses.isNotEmpty ? ', ' + _record!.ongoingIllnesses : ''}"),
+                    SizedBox(height: 12),
+                    _buildSection("Emergency Contact Name", _record!.emergencyContactName),
+                    SizedBox(height: 12),
+                    _buildSection("Emergency Contact Number", _record!.emergencyContactNumber),
+                    SizedBox(height: 16),
+                    _buildSection("Occupation", _record!.occupation),
+                    SizedBox(height: 12),
+                    _buildSection("Addiction", _record!.addiction.isNotEmpty ? _record!.addiction : "None"),
+                    SizedBox(height: 12),
+                    _buildSection("Address", _record!.address),
+                    SizedBox(height: 16),
+                    _buildSection("Smoking", _record!.smoking ? "Yes" : "No"),
+                    SizedBox(height: 12),
+                    _buildSection("Drinking", _record!.drinking ? "Yes" : "No"),
+                    SizedBox(height: 12),
+                    _buildSection("Diabetes (Sugar)", _record!.sugar ? "Yes" : "No"),
+                  ]),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.medical_services_outlined, size: 100, color: Colors.grey),
-            SizedBox(height: 20),
-            Text("No medical record found.",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500)),
-            SizedBox(height: 10),
-            Text("Tap below to add your medical information.",
-                style: TextStyle(fontSize: 16, color: Colors.grey)),
-            SizedBox(height: 30),
-            ElevatedButton.icon(
-              icon: Icon(Icons.add, color: Colors.white),
-              label: Text("Add Medical Record", style: TextStyle(color: Colors.white)),
-              onPressed: () {
-                setState(() {
-                  _isCreating = true;
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                backgroundColor: Colors.teal,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
+  // An improved, more 'real life' form layout
   Widget _buildForm() {
     return Form(
       key: _formKey,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: Offset(0, 3),
-              ),
-            ],
-          ),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: Offset(0,3))]),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                Text(
-                  _record == null ? "📝 Create Medical Record" : "✏️ Edit Medical Record",
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
+                Text(_record == null ? "📝 Create Medical Record" : "✏️ Edit Medical Record", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                SizedBox(height: 12),
 
-                SizedBox(height: 16),
-                _buildField("Date of Birth (yyyy-mm-dd)", _controllers['dob']!),
-                _buildField("Blood Group", _controllers['bloodGroup']!),
-                _buildField("Past Surgeries", _controllers['pastSurgeries']!),
-                _buildField("Long Term Medications", _controllers['medications']!),
-                _buildField("Ongoing Illnesses", _controllers['illnesses']!),
-                _buildField("Allergies", _controllers['allergies']!),
-                _buildField("Other Issues", _controllers['otherIssues']!),
+                // Two-column row for DOB & Blood group
+                Row(children: [
+                  Expanded(child: _buildField("Date of Birth (yyyy-mm-dd)", _controllers['dob']!)),
+                  SizedBox(width: 12),
+                  Expanded(child: _buildField("Blood Group", _controllers['bloodGroup']!)),
+                ]),
+
+                SizedBox(height: 6),
+
+                // Larger text areas for surgeries / meds
+                _buildField("Major Surgeries / Past Conditions", _controllers['pastSurgeries']!, maxLines: 3),
+                _buildField("Long Term Medications", _controllers['medications']!, maxLines: 3),
+                _buildField("Ongoing Illnesses", _controllers['illnesses']!, maxLines: 3),
+                _buildField("Allergies", _controllers['allergies']!, maxLines: 3),
+                _buildField("Other Issues", _controllers['otherIssues']!, maxLines: 2),
+
+                SizedBox(height: 8),
+                Divider(),
+                SizedBox(height: 8),
+
                 _buildField("Emergency Contact Name", _controllers['emergencyName']!),
                 _buildField("Emergency Contact Number", _controllers['emergencyNumber']!),
-                _buildField("Occupation", _controllers['occupation']!),
-                _buildField("Addiction (if any)", _controllers['addiction']!),
-                _buildField("Address", _controllers['address']!),
 
-                SizedBox(height: 20),
+                SizedBox(height: 10),
+                Row(children: [
+                  Expanded(child: _buildField("Occupation", _controllers['occupation']!)),
+                  SizedBox(width: 12),
+                  Expanded(child: _buildField("Addiction (if any)", _controllers['addiction']!)),
+                ]),
 
-                // 📌 New Boolean fields (using Switch)
-                _buildSwitch("Do you smoke?", "smoking"),
-                _buildSwitch("Do you drink alcohol?", "drinking"),
-                _buildSwitch("Do you have sugar (diabetes)?", "sugar"),
-                SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    icon: Icon(Icons.save,color: Colors.white,),
-                    label: Text(
-                  _record == null ? "Submit Record" : "Save Changes",
-                    style: TextStyle(fontSize: 16,color: Colors.white),
-                  ),
-                    onPressed: _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      padding: EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                SizedBox(height: 8),
+                _buildField("Address", _controllers['address']!, maxLines: 2),
+
+                SizedBox(height: 12),
+
+                // Switches as compact tiles
+                _buildSwitch("Do you smoke?", _smoking, (v) => setState(() => _smoking = v)),
+                _buildSwitch("Do you drink alcohol?", _drinking, (v) => setState(() => _drinking = v)),
+                _buildSwitch("Do you have diabetes (sugar)?", _sugar, (v) => setState(() => _sugar = v)),
+
+                SizedBox(height: 18),
+                Row(children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _submit,
+                      icon: Icon(Icons.save, color: Colors.white),
+                      label: Text(_record == null ? "Submit Record" : "Save Changes", style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, padding: EdgeInsets.symmetric(vertical: 14)),
                     ),
                   ),
-                ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        // Cancel edit & reload
+                        setState(() {
+                          _isCreating = false;
+                        });
+                        _loadMedicalRecord();
+                      },
+                      icon: Icon(Icons.cancel),
+                      label: Text("Cancel"),
+                    ),
+                  ),
+                ]),
               ],
             ),
           ),
@@ -390,19 +515,41 @@ class _RecordsPageState extends State<RecordsPage> {
     );
   }
 
-  Widget _buildField(String label, TextEditingController controller) {
+  Widget _buildField(String label, TextEditingController controller, {int maxLines = 1}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextFormField(
         controller: controller,
+        maxLines: maxLines,
         decoration: InputDecoration(
           labelText: label,
           filled: true,
           fillColor: Colors.grey[100],
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        validator: (value) =>
-        value == null || value.isEmpty ? 'Required' : null,
+        validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.medical_services_outlined, size: 100, color: Colors.grey),
+          SizedBox(height: 20),
+          Text("No medical record found.", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500)),
+          SizedBox(height: 10),
+          Text("Tap below to add your medical information.", style: TextStyle(fontSize: 16, color: Colors.grey)),
+          SizedBox(height: 30),
+          ElevatedButton.icon(
+            icon: Icon(Icons.add, color: Colors.white),
+            label: Text("Add Medical Record", style: TextStyle(color: Colors.white)),
+            onPressed: () => setState(() => _isCreating = true),
+            style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14), backgroundColor: Colors.teal, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+          )
+        ]),
       ),
     );
   }
@@ -411,17 +558,41 @@ class _RecordsPageState extends State<RecordsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Medical Records", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          "Medical Records",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         backgroundColor: Colors.lightBlue,
         elevation: 0,
       ),
       body: _isLoading
-        ? Center(child: CircularProgressIndicator())
-        : _isCreating
-    ? _buildForm()
-        : _record != null
-    ? _buildRecordDisplay()
-        : _buildEmptyState(),
+          ? Center(child: CircularProgressIndicator())
+          : _isCreating
+          ? _buildForm()
+          : _record != null
+          ? _buildRecordDisplay()
+          : _buildEmptyState(),
+
+      // ✅ Proper bottom button
+      bottomNavigationBar: (!_isCreating && _record != null)
+          ? Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ElevatedButton.icon(
+          onPressed: _generatePdfAndShare,
+          icon: Icon(Icons.download, size: 20, color: Colors.white),
+          label: Text("Download PDF",
+              style: TextStyle(color: Colors.white, fontSize: 16)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.teal,
+            padding: EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      )
+          : null,
     );
   }
+
 }

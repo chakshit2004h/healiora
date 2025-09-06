@@ -43,12 +43,6 @@ class _SettingsPageState extends State<SettingsPage> {
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   SwitchListTile(
-                    value: sosAlerts,
-                    onChanged: (val) => setState(() => sosAlerts = val),
-                    title: const Text("SOS Alerts"),
-                    subtitle: const Text("Receive emergency notifications"),
-                  ),
-                  SwitchListTile(
                     value: medicalUpdates,
                     onChanged: (val) => setState(() => medicalUpdates = val),
                     title: const Text("Medical Record Updates"),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_services.dart'; // import your AuthService
 
@@ -39,8 +40,35 @@ class _HospitalPageState extends State<HospitalPage> {
     });
 
     try {
-      final hospitalsJson = await authService.getNearbyHospitals(latitude, longitude);
+      // ✅ 1. Check permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          print("❌ Location permission denied");
+          setState(() => isLoading = false);
+          return;
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        print("❌ Location permission permanently denied");
+        setState(() => isLoading = false);
+        return;
+      }
 
+      // ✅ 2. Get current location
+      Position pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      print("📍 Location: ${pos.latitude}, ${pos.longitude}");
+
+      // ✅ 3. Fetch hospitals with dynamic coords
+      final hospitalsJson = await authService.getNearbyHospitals(
+        pos.latitude,
+        pos.longitude,
+      );
+
+      // ✅ 4. Parse hospitals
       final fetchedHospitals = hospitalsJson.map<Hospital>((json) {
         return Hospital(
           json['name'] ?? 'Unknown',
@@ -57,13 +85,10 @@ class _HospitalPageState extends State<HospitalPage> {
         isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
-      print('Error fetching hospitals: $e');
+      setState(() => isLoading = false);
+      print("❌ Error fetching hospitals: $e");
     }
   }
-
   @override
   Widget build(BuildContext context) {
     final filtered = allHospitals.where((hosp) {
