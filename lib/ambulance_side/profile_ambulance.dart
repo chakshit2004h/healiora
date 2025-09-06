@@ -32,11 +32,7 @@ class _AmbulanceProfilePageState extends State<AmbulanceProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(onPressed: (){Navigator.pop(context);}, icon: Icon(Icons.arrow_back,color: Colors.white,)),
-        title: const Text("Ambulance Profile",style: TextStyle(color: Colors.white,fontWeight: FontWeight.w500),),
-        backgroundColor: Colors.blue,
-      ),
+      backgroundColor: Colors.white,
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : profile == null
@@ -47,6 +43,7 @@ class _AmbulanceProfilePageState extends State<AmbulanceProfilePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: profile!.entries.map((entry) {
             return Card(
+              color: Colors.white,
               margin: const EdgeInsets.symmetric(vertical: 6),
               child: ListTile(
                 title: Text(

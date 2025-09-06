@@ -100,6 +100,11 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
       final doctorSocket = AmbulanceDoctorService(user.id.toString(), "doctor");
       await doctorSocket.init();
 
+      String extractPatientName(String notes) {
+        final match = RegExp(r'Patient:\s*([^,]+)').firstMatch(notes);
+        return match != null ? match.group(1)!.trim() : "Unknown Patient";
+      }
+
       // ✅ listen for hospital events
       doctorSocket.on("doctor_case_assigned", (data) async {
         print("🚨 SOS ALERT received: $data");
@@ -107,7 +112,7 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
         if (!mounted) return;
         setState(() {
           sosAlerts.insert(0, {
-            "name": data['patientName'] ?? "Unknown Patient",
+            "name": data['Patient'] ?? "Unknown Patient",
             "age": data['age'] ?? "N/A",
             "condition": data['condition'] ?? "Emergency case",
             "location": data['location'] ?? "Unknown",
@@ -128,30 +133,43 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
                 "🚨 Emergency SOS Alert",
                 style: TextStyle(color: Colors.red),
               ),
-              content: Text("Patient: chay \nLocation: ${data['location'] ?? 'Kharar'}"),
+              content: Text(
+                "Patient: ${extractPatientName(data['case_details']?['notes'] ?? '')}\n"
+                    "Location: ${data['location'] ?? 'Kharar'}",
+              ),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text("Dismiss"),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    const url = "https://drive.google.com/file/d/11UuYHrIddea57yM9GOLTAhAu3XqOJK1d/view?usp=drive_link";
-                    final uri = Uri.parse(url);
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text("Dismiss"),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text("Diagnosed"),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        const url =
+                            "https://drive.google.com/file/d/11UuYHrIddea57yM9GOLTAhAu3XqOJK1d/view?usp=drive_link";
+                        final uri = Uri.parse(url);
 
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
-                    } else {
-                      print("Could not launch $url");
-                    }
-                  },
-                  child: const Text("Download"),
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        } else {
+                          print("Could not launch $url");
+                        }
+                      },
+                      child: const Text("Download"),
+                    ),
+                  ],
                 )
-
               ],
             );
           },
         );
+
       });
       print("✅ Doctor socket initialized for ${user.id}");
     } catch (e) {

@@ -29,8 +29,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     super.initState();
     _pages = [
       dashboard(),
-      ActiveTrip(),
       History(),
+      AmbulanceProfilePage()
     ];
     _loadAndInitSocket();
   }
@@ -163,25 +163,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ],
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12.0),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: Colors.black12,
-              child: IconButton(
-                icon: const Icon(Icons.person, color: Colors.black),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const AmbulanceProfilePage()),
-                  );
-                },
-              ),
-            ),
-          )
-        ],
       ),
 
       body: _pages[_selectedIndex],
@@ -204,12 +185,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
             label: "Dashboard",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.local_taxi),
-            label: "Active Trip",
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.history),
             label: "History",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: "Profile",
           ),
         ],
       ),
@@ -222,18 +203,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 👇 Overview cards here
+          _buildOverviewCardsRow(),
+          const SizedBox(height: 20),
+
           const Text(
             "SOS Requests",
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          ...activeTrips.map((trip) {
-            return _buildSosCard(trip);
-          }).toList(),
+
+          if (activeTrips.isEmpty)
+            const Center(
+              child: Text("No SOS requests yet", style: TextStyle(color: Colors.grey)),
+            )
+          else
+            ...activeTrips.map((trip) {
+              return _buildSosCard(trip);
+            }).toList(),
         ],
       ),
     );
   }
+
 
   Widget _buildSosCard(Map<String, dynamic> trip) {
     final caseDetails = trip["caseDetails"] ?? {};
@@ -449,4 +441,51 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
   }
+  // Add overview cards row
+  Widget _buildOverviewCardsRow() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _overviewCard(
+          Icons.warning,
+          "SOS Alerts",
+          "${activeTrips.length}", // ✅ dynamic count
+          Colors.red.shade50,
+          Colors.red,
+        ),
+        _overviewCard(
+          Icons.people,
+          "Patients",
+          "24", // Replace with real patient count if you fetch from backend
+          Colors.blue.shade50,
+          Colors.blue,
+        ),
+      ],
+    );
+  }
+
+  static Widget _overviewCard(
+      IconData icon, String title, String count, Color bgColor, Color iconColor) {
+    return Container(
+      width: 140,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: iconColor, size: 28),
+          const SizedBox(height: 8),
+          Text(
+            count,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          Text(title, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
 }

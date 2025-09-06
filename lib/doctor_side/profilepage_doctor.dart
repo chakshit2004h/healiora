@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:healiora/mainPage/login.dart';
 
 import '../services/auth_services.dart';
 
@@ -186,17 +187,11 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
                 subtitle: "No device linked", disabled: true)),
 
             const SizedBox(height: 20),
-
-            _sectionTitle("Support & legal"),
-            _card(_simpleRow(Icons.help_outline, "Help & Support")),
-            _card(_simpleRow(Icons.description_outlined, "Terms & Privacy")),
-
-            const SizedBox(height: 20),
             const Divider(thickness: 1),
             Center(
               child: TextButton(
                 onPressed: () {
-                  // TODO: Add logout logic here
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => Login()));
                 },
                 child: const Text("Logout",
                     style:

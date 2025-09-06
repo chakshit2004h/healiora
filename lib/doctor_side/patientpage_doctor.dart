@@ -81,16 +81,16 @@ class _PatientpageDoctorState extends State<PatientpageDoctor> {
                           ),
                         ],
                       ),
-                      Chip(
-                        label: Text(
-                          patient["priority_level"] ?? "Normal",
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                        backgroundColor: (patient["priority_level"] ==
-                            "High")
-                            ? Colors.red
-                            : Colors.green,
-                      ),
+                      // Chip(
+                      //   label: Text(
+                      //     patient["priority_level"] ?? "Normal",
+                      //     style: const TextStyle(color: Colors.white),
+                      //   ),
+                      //   backgroundColor: (patient["priority_level"] ==
+                      //       "High")
+                      //       ? Colors.red
+                      //       : Colors.green,
+                      // ),
                     ],
                   ),
 
@@ -134,21 +134,6 @@ class _PatientpageDoctorState extends State<PatientpageDoctor> {
                           style:
                           TextStyle(color: Colors.blueAccent),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          // 👉 Maybe start consultation
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        icon: const Icon(Icons.medical_information,color: Colors.white,
-                            size: 18),
-                        label: const Text("Consult",style: TextStyle(color: Colors.white),),
                       ),
                     ],
                   )

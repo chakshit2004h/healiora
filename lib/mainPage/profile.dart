@@ -61,6 +61,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
                 // ✅ User Profile Card with API data
                 Card(
+                  color: Colors.white,
                   elevation: 1,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -278,6 +279,7 @@ class ProfileOptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      color: Colors.white,
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ListTile(
