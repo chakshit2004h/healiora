@@ -333,7 +333,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin{
         },
 
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.lightBlue,
+          backgroundColor: Colors.red,
           padding: EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
@@ -415,43 +415,54 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin{
             ),
 
           SizedBox(height: 8),
-          TextButton(
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (ctx) {
-                  return AlertDialog(
-                    title: Text('Nearby Hospitals'),
-                    content: SizedBox(
-                      width: double.maxFinite,
-                      child: _nearbyHospitals.isEmpty
-                          ? Text("No hospitals found nearby")
-                          : ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: _nearbyHospitals.length,
-                        itemBuilder: (context, index) {
-                          final hospital = _nearbyHospitals[index];
-                          return ListTile(
-                            title: Text(hospital['name'] ?? 'Unknown'),
-                            subtitle: Text(
-                              "${(hospital['distance_km'] ?? 0).toString()} km",
-                            ),
-                          );
-                        },
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) {
+                    return AlertDialog(
+                      title: Text('Nearby Hospitals'),
+                      content: SizedBox(
+                        width: double.maxFinite,
+                        child: _nearbyHospitals.isEmpty
+                            ? Text("No hospitals found nearby")
+                            : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: _nearbyHospitals.length,
+                          itemBuilder: (context, index) {
+                            final hospital = _nearbyHospitals[index];
+                            return ListTile(
+                              title: Text(hospital['name'] ?? 'Unknown'),
+                              subtitle: Text(
+                                "${(hospital['distance_km'] ?? 0).toString()} km",
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(),
-                        child: Text('Close'),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-            child: Text("View All Hospitals"),
-          ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: Text('Close'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+              child: Text("View All Hospitals",style: TextStyle(color: Colors.blue),),
+              style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                    shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.blue, width: 1), // 🔹 Blue border
+              ),
+              elevation: 0,
+            ),),
+          )
         ],
       ),
     );

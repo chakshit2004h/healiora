@@ -339,86 +339,157 @@ class _RecordsPageState extends State<RecordsPage> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: Offset(0, 3))],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Top teal border
-                Container(height: 6, decoration: BoxDecoration(color: Colors.tealAccent, borderRadius: BorderRadius.vertical(top: Radius.circular(12)))),
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      Text("Emergency Information", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      Row(children: [
-                        TextButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _isCreating = true;
-                            });
-                          },
-                          icon: Icon(Icons.edit, size: 18),
-                          label: Text("Edit"),
-                          style: TextButton.styleFrom(foregroundColor: Colors.grey[700]),
-                        ),
-                      ]),
-                    ]),
-
-                    SizedBox(height: 12),
-
-                    // Personal summary (uses _user)
-                    if (_user != null) ...[
-                      _buildSection("Name", _user!.fullName),
-                      SizedBox(height: 12),
-                      Row(children: [
-                        Expanded(child: _buildSection("Phone", _user!.phoneNumber)),
-                        SizedBox(width: 12),
-                        Expanded(child: _buildSection("Email", _user!.email)),
-                      ]),
-                      SizedBox(height: 12),
-                      Row(children: [
-                        Expanded(child: _buildSection("Age", _user!.age?.toString() ?? "")),
-                        SizedBox(width: 12),
-                        Expanded(child: _buildSection("Gender", _user!.gender ?? "")),
-                      ]),
-                      SizedBox(height: 16),
+          // 🔹 Header card
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 22,
+                            backgroundColor: Colors.red.shade100,
+                            child: Icon(Icons.person, color: Colors.red),
+                          ),
+                          SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("Patient Record – ${_user?.fullName ?? "Unknown"}",
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              Text("Medical Record", style: TextStyle(color: Colors.grey[600])),
+                            ],
+                          ),
+                        ],
+                      ),
                     ],
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.cake, size: 18, color: Colors.grey),
+                      SizedBox(width: 6),
+                      Text("${_record?.dateOfBirth ?? "N/A"}"),
+                      SizedBox(width: 16),
+                      Icon(Icons.male, size: 18, color: Colors.grey),
+                      SizedBox(width: 6),
+                      Text("${_user?.gender ?? "N/A"}"),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
 
-                    // Medical details
-                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      _buildSection("Blood Group", _record!.bloodGroup),
-                      _buildSection("Last Updated", "28 Jul 2025"), // you can replace with actual updatedAt if you have it
-                    ]),
-                    SizedBox(height: 16),
-                    _buildSection("Allergies", _record!.allergies),
-                    SizedBox(height: 12),
-                    _buildSection("Current Medications", _record!.longTermMedications),
-                    SizedBox(height: 12),
-                    _buildSection("Major Surgeries / Conditions", "${_record!.pastSurgeries}${_record!.ongoingIllnesses.isNotEmpty ? ', ' + _record!.ongoingIllnesses : ''}"),
-                    SizedBox(height: 12),
-                    _buildSection("Emergency Contact Name", _record!.emergencyContactName),
-                    SizedBox(height: 12),
-                    _buildSection("Emergency Contact Number", _record!.emergencyContactNumber),
-                    SizedBox(height: 16),
-                    _buildSection("Occupation", _record!.occupation),
-                    SizedBox(height: 12),
-                    _buildSection("Addiction", _record!.addiction.isNotEmpty ? _record!.addiction : "None"),
-                    SizedBox(height: 12),
-                    _buildSection("Address", _record!.address),
-                    SizedBox(height: 16),
-                    _buildSection("Smoking", _record!.smoking ? "Yes" : "No"),
-                    SizedBox(height: 12),
-                    _buildSection("Drinking", _record!.drinking ? "Yes" : "No"),
-                    SizedBox(height: 12),
-                    _buildSection("Diabetes (Sugar)", _record!.sugar ? "Yes" : "No"),
-                  ]),
-                ),
+          SizedBox(height: 16),
+
+          // 🔹 Current Medications + Chronic Conditions
+          Row(
+            children: [
+              Expanded(
+                child: _buildInfoCard("Current Medications", [
+                  _record?.longTermMedications.isNotEmpty == true
+                      ? Text(_record!.longTermMedications)
+                      : Text("None"),
+                ]),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _buildInfoCard("Chronic Conditions", [
+                  Wrap(
+                    spacing: 6,
+                    children: (_record?.ongoingIllnesses.isNotEmpty == true
+                        ? _record!.ongoingIllnesses.split(',')
+                        : ["None"]).map((c) {
+                      return Chip(
+                        label: Text(c.trim()),
+                        backgroundColor: Colors.red.shade50,
+                        labelStyle: TextStyle(color: Colors.red),
+                      );
+                    }).toList(),
+                  ),
+                ]),
+              ),
+            ],
+          ),
+
+          SizedBox(height: 16),
+
+          // 🔹 Emergency Contact
+          _buildInfoCard("Emergency Contact", [
+            ListTile(
+              leading: Icon(Icons.phone, color: Colors.black87),
+              title: Text(_record?.emergencyContactName ?? "Unknown"),
+              subtitle: Text(_record?.emergencyContactNumber ?? "Not available"),
+            )
+          ]),
+
+          SizedBox(height: 16),
+
+          // 🔹 Past Diagnoses
+          _buildInfoCard("Past Diagnoses / Major Illnesses", [
+            _buildTimelineItem("Hypertension", "Aug 12, 2020"),
+            _buildTimelineItem("Type 2 Diabetes", "Nov 5, 2019"),
+            _buildTimelineItem("Seasonal Allergies", "Apr 8, 2018"),
+          ]),
+
+          SizedBox(height: 16),
+
+          // 🔹 Previous Hospitalizations
+          _buildInfoCard("Previous Hospitalizations", [
+            _buildTimelineItem("San Francisco General Hospital", "Mar 15, 2020",
+                desc: "Admitted for: Cardiac monitoring and chest pain evaluation"),
+            _buildTimelineItem("UCSF Medical Center", "Mar 4, 2018",
+                desc: "Admitted for: Diabetes medication management"),
+            _buildTimelineItem("Kaiser Permanente SF", "Aug 12, 2017",
+                desc: "Admitted for: Severe asthma exacerbation"),
+          ]),
+
+          SizedBox(height: 16),
+
+          // 🔹 Immunizations
+          ExpansionTile(
+            title: Text("Immunization & Preventive Care",
+                style: TextStyle(fontWeight: FontWeight.w600)),
+            children: [ListTile(title: Text("Vaccination records not provided"))],
+          ),
+
+          SizedBox(height: 16),
+
+          // 🔹 Other
+          ExpansionTile(
+            title: Text("Other", style: TextStyle(fontWeight: FontWeight.w600)),
+            children: [
+              ListTile(
+                title: Text("Lifestyle: Non-smoker, moderate exercise"),
+              ),
+              ListTile(
+                title: Text("Diet: Balanced, low sodium"),
+              ),
+            ],
+          ),
+
+          SizedBox(height: 24),
+
+          // 🔹 Footer
+          Center(
+            child: Column(
+              children: [
+                Text("Healiora",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.black54)),
+                SizedBox(height: 4),
+                Text("Generated on ${DateTime.now().toLocal().toString().split(' ').first}",
+                    style: TextStyle(color: Colors.grey)),
               ],
             ),
           ),
@@ -426,6 +497,42 @@ class _RecordsPageState extends State<RecordsPage> {
       ),
     );
   }
+
+  Widget _buildInfoCard(String title, List<Widget> children) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            SizedBox(height: 10),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimelineItem(String title, String date, {String? desc}) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(title, style: TextStyle(fontWeight: FontWeight.w500)),
+      subtitle: desc != null ? Text(desc, style: TextStyle(color: Colors.grey[700])) : null,
+      trailing: Container(
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(date, style: TextStyle(color: Colors.white, fontSize: 12)),
+      ),
+    );
+  }
+
+
 
   // An improved, more 'real life' form layout
   Widget _buildForm() {
