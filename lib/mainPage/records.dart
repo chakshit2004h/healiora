@@ -364,7 +364,8 @@ class _RecordsPageState extends State<RecordsPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text("Patient Record – ${_user?.fullName ?? "Unknown"}",
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                overflow: TextOverflow.ellipsis,),
                               Text("Medical Record", style: TextStyle(color: Colors.grey[600])),
                             ],
                           ),
@@ -375,7 +376,7 @@ class _RecordsPageState extends State<RecordsPage> {
                       ElevatedButton(
                           onPressed: () => _openEditDialog(),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.teal,
+                            backgroundColor: Colors.blue,
                             padding: EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -385,7 +386,6 @@ class _RecordsPageState extends State<RecordsPage> {
                       )
                     ],
                   ),
-
                   SizedBox(height: 8),
                   Row(
                     children: [
@@ -526,18 +526,6 @@ class _RecordsPageState extends State<RecordsPage> {
             _buildTimelineItem("Hypertension", "Aug 12, 2020"),
             _buildTimelineItem("Type 2 Diabetes", "Nov 5, 2019"),
             _buildTimelineItem("Seasonal Allergies", "Apr 8, 2018"),
-          ]),
-
-          SizedBox(height: 16),
-
-          // 🔹 Previous Hospitalizations
-          _buildInfoCard("Previous Hospitalizations", [
-            _buildTimelineItem("San Francisco General Hospital", "Mar 15, 2020",
-                desc: "Admitted for: Cardiac monitoring and chest pain evaluation"),
-            _buildTimelineItem("UCSF Medical Center", "Mar 4, 2018",
-                desc: "Admitted for: Diabetes medication management"),
-            _buildTimelineItem("Kaiser Permanente SF", "Aug 12, 2017",
-                desc: "Admitted for: Severe asthma exacerbation"),
           ]),
 
           SizedBox(height: 16),
