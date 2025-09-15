@@ -108,10 +108,10 @@ class _HospitalPageState extends State<HospitalPage> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: Color(0xFFF6FEFD),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0,
+        elevation: 5,
         title: TextField(
           decoration: InputDecoration(
             hintText: 'Search hospitals by name or specialty',
@@ -194,6 +194,14 @@ class _HospitalPageState extends State<HospitalPage> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          spreadRadius: 2,
+                          blurRadius: 8,
+                          offset: Offset(0, 4), // x,y movement of shadow
+                        ),
+                      ],
                     ),
                     padding: EdgeInsets.all(16),
                     child: Column(

@@ -73,7 +73,6 @@ class _RecordsPageState extends State<RecordsPage> {
     }
   }
 
-
   Future<void> _loadMedicalRecord() async {
     try {
       final record = await _authService.getMedicalRecord();
@@ -173,7 +172,7 @@ class _RecordsPageState extends State<RecordsPage> {
     final fullName = _user?.fullName ?? "Unknown";
     final phone = _user?.phoneNumber ?? "";
     final email = _user?.email ?? "";
-    final age = _user?.age?.toString() ?? "";
+    final age = _user?.age.toString() ?? "";
     final gender = _user?.gender ?? "";
 
     doc.addPage(
@@ -371,8 +370,22 @@ class _RecordsPageState extends State<RecordsPage> {
                           ),
                         ],
                       ),
+
+                      // ✅ Edit button
+                      ElevatedButton(
+                          onPressed: () => _openEditDialog(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal,
+                            padding: EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text("Edit",style: TextStyle(color: Colors.white),)
+                      )
                     ],
                   ),
+
                   SizedBox(height: 8),
                   Row(
                     children: [
@@ -423,6 +436,79 @@ class _RecordsPageState extends State<RecordsPage> {
           ),
 
           SizedBox(height: 16),
+          // Row for Blood Group and Addiction
+          Row(
+            children: [
+              Expanded(
+                child: _buildInfoCard("Blood Group", [
+                  Text(
+                    _record?.bloodGroup.isNotEmpty == true
+                        ? _record!.bloodGroup
+                        : "Not specified",
+                  ),
+                ]),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _buildInfoCard("Addiction", [
+                  Text(
+                    _record?.addiction.isNotEmpty == true
+                        ? _record!.addiction
+                        : "None",
+                  ),
+                ]),
+              ),
+            ],
+          ),
+
+          SizedBox(height: 12),
+
+// Row for Smoking and Drinking
+          Row(
+            children: [
+              Expanded(
+                child: _buildInfoCard("Smoking", [
+                  Text(_record?.smoking == true ? "Yes" : "No"),
+                ]),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _buildInfoCard("Drinking", [
+                  Text(_record?.drinking == true ? "Yes" : "No"),
+                ]),
+              ),
+            ],
+          ),
+
+          SizedBox(height: 12),
+
+// Row for Diabetes and Allergies
+          Row(
+            children: [
+              Expanded(
+                child: _buildInfoCard("Diabetes", [
+                  Text(_record?.sugar == true ? "Yes" : "No"),
+                ]),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _buildInfoCard("Allergies", [
+                  Wrap(
+                    spacing: 6,
+                    children: (_record?.allergies.isNotEmpty == true
+                        ? _record!.allergies.split(',')
+                        : ["None"]).map((a) {
+                      return Chip(
+                        label: Text(a.trim()),
+                        backgroundColor: Colors.orange.shade50,
+                        labelStyle: TextStyle(color: Colors.orange),
+                      );
+                    }).toList(),
+                  ),
+                ]),
+              ),
+            ],
+          ),
 
           // 🔹 Emergency Contact
           _buildInfoCard("Emergency Contact", [
@@ -701,5 +787,119 @@ class _RecordsPageState extends State<RecordsPage> {
           : null,
     );
   }
+  void _openEditDialog() {
+    final tempControllers = {
+      'bloodGroup': TextEditingController(text: _record?.bloodGroup ?? ""),
+      'medications': TextEditingController(text: _record?.longTermMedications ?? ""),
+      'illnesses': TextEditingController(text: _record?.ongoingIllnesses ?? ""),
+      'allergies': TextEditingController(text: _record?.allergies ?? ""),
+      'emergencyName': TextEditingController(text: _record?.emergencyContactName ?? ""),
+      'emergencyNumber': TextEditingController(text: _record?.emergencyContactNumber ?? ""),
+      'addiction': TextEditingController(text: _record?.addiction ?? ""),
+    };
+
+    bool smoking = _record?.smoking ?? false;
+    bool drinking = _record?.drinking ?? false;
+    bool sugar = _record?.sugar ?? false;
+
+    showDialog(
+      useSafeArea: true,
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setStateDialog) {
+            return AlertDialog(
+              title: Text("Edit Medical Info"),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _buildDialogField("Blood Group", tempControllers['bloodGroup']!),
+                    _buildDialogField("Current Medications", tempControllers['medications']!, maxLines: 2),
+                    _buildDialogField("Chronic Conditions", tempControllers['illnesses']!, maxLines: 2),
+                    _buildDialogField("Allergies", tempControllers['allergies']!, maxLines: 2),
+                    _buildDialogField("Addiction", tempControllers['addiction']!),
+                    _buildDialogField("Emergency Contact Name", tempControllers['emergencyName']!),
+                    _buildDialogField("Emergency Contact Number", tempControllers['emergencyNumber']!),
+
+                    SwitchListTile(
+                      title: Text("Smoking"),
+                      value: smoking,
+                      onChanged: (v) => setStateDialog(() => smoking = v),
+                    ),
+                    SwitchListTile(
+                      title: Text("Drinking"),
+                      value: drinking,
+                      onChanged: (v) => setStateDialog(() => drinking = v),
+                    ),
+                    SwitchListTile(
+                      title: Text("Diabetes (Sugar)"),
+                      value: sugar,
+                      onChanged: (v) => setStateDialog(() => sugar = v),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final updatedRecord = MedicalRecord(
+                      dateOfBirth: _record?.dateOfBirth ?? "",
+                      bloodGroup: tempControllers['bloodGroup']!.text,
+                      pastSurgeries: _record?.pastSurgeries ?? "",
+                      longTermMedications: tempControllers['medications']!.text,
+                      ongoingIllnesses: tempControllers['illnesses']!.text,
+                      allergies: tempControllers['allergies']!.text,
+                      otherIssues: _record?.otherIssues ?? "",
+                      emergencyContactName: tempControllers['emergencyName']!.text,
+                      emergencyContactNumber: tempControllers['emergencyNumber']!.text,
+                      occupation: _record?.occupation ?? "",
+                      addiction: tempControllers['addiction']!.text,
+                      address: _record?.address ?? "",
+                      smoking: smoking,
+                      drinking: drinking,
+                      sugar: sugar,
+                    );
+
+                    bool success = await _authService.updateMedicalRecord(updatedRecord);
+                    if (success) {
+                      setState(() => _record = updatedRecord);
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("✅ Record updated")),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("❌ Failed to update record")),
+                      );
+                    }
+                  },
+                  child: Text("Save"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildDialogField(String label, TextEditingController controller, {int maxLines = 1}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: TextField(
+        controller: controller,
+        maxLines: maxLines,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(),
+        ),
+      ),
+    );
+  }
+
 
 }
