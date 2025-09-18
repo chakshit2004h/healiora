@@ -10,6 +10,60 @@ class Login extends StatefulWidget {
   _LoginState createState() => _LoginState();
 }
 
+class _InputField extends StatefulWidget {
+  final String hint;
+  final IconData icon;
+  final bool isPassword;
+  final Function(String)? onChanged;
+
+  const _InputField({
+    required this.hint,
+    required this.icon,
+    this.isPassword = false,
+    this.onChanged,
+  });
+
+  @override
+  State<_InputField> createState() => _InputFieldState();
+}
+
+class _InputFieldState extends State<_InputField> {
+  bool _obscureText = true; // ✅ persists correctly
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: TextField(
+        obscureText: widget.isPassword ? _obscureText : false,
+        onChanged: widget.onChanged,
+        decoration: InputDecoration(
+          icon: Icon(widget.icon),
+          hintText: widget.hint,
+          border: InputBorder.none,
+          suffixIcon: widget.isPassword
+              ? IconButton(
+            icon: Icon(
+              _obscureText ? Icons.visibility_off : Icons.visibility,
+            ),
+            onPressed: () {
+              setState(() {
+                _obscureText = !_obscureText;
+              });
+            },
+          )
+              : null,
+        ),
+      ),
+    );
+  }
+}
+
 class _LoginState extends State<Login> {
   bool isLogin = true;
   bool isPhoneLogin = true;
@@ -274,7 +328,7 @@ class _LoginState extends State<Login> {
           onChanged: (val) => email = val,
         ),
         buildInput("Password", Icons.lock, isPassword: true, onChanged: (val) => password = val),
-        buildInput("Confirm Password", Icons.lock_outline, isPassword: true),
+        buildInput("Confirm Password", Icons.lock_outline, isPassword: false),
         buildInput("Phone number", Icons.phone, onChanged: (val) => phonenumber = val),
         buildInput("Emergency Contact Number", Icons.contact_phone, onChanged: (val) => emergencyNumber = val),
         buildInput("Age", Icons.cake, onChanged: (val) => age = val),
@@ -311,27 +365,15 @@ class _LoginState extends State<Login> {
     );
   }
 
-  Widget buildInput(String hint, IconData icon, {bool isPassword = false, Function(String)? onChanged}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: TextField(
-        obscureText: isPassword,
-        onChanged: onChanged,
-        decoration: InputDecoration(
-          icon: Icon(icon),
-          hintText: hint,
-          border: InputBorder.none,
-        ),
-      ),
+  Widget buildInput(String hint, IconData icon,
+      {bool isPassword = false, Function(String)? onChanged}) {
+    return _InputField(
+      hint: hint,
+      icon: icon,
+      isPassword: isPassword,
+      onChanged: onChanged,
     );
   }
-
-
   Widget buildPrimaryButton(String text, {required VoidCallback onPressed}) {
     return Container(
       width: double.infinity,

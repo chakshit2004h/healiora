@@ -341,6 +341,7 @@ class _RecordsPageState extends State<RecordsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 🔹 Header card
+          // 🔹 Header card (fixed for all screen sizes)
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 2,
@@ -349,42 +350,50 @@ class _RecordsPageState extends State<RecordsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 22,
-                            backgroundColor: Colors.red.shade100,
-                            child: Icon(Icons.person, color: Colors.red),
-                          ),
-                          SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text("Patient Record – ${_user?.fullName ?? "Unknown"}",
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                overflow: TextOverflow.ellipsis,),
-                              Text("Medical Record", style: TextStyle(color: Colors.grey[600])),
-                            ],
-                          ),
-                        ],
-                      ),
-
-                      // ✅ Edit button
-                      ElevatedButton(
+                  FittedBox( // <-- ensures row fits in any screen width
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 22,
+                              backgroundColor: Colors.red.shade100,
+                              child: Icon(Icons.person, color: Colors.red),
+                            ),
+                            SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Patient Record – ${_user?.fullName ?? "Unknown"}",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text("Medical Record",
+                                    style: TextStyle(color: Colors.grey[600])),
+                              ],
+                            ),
+                          ],
+                        ),
+                        SizedBox(width: 12),
+                        ElevatedButton(
                           onPressed: () => _openEditDialog(),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
-                            padding: EdgeInsets.symmetric(vertical: 14),
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: Text("Edit",style: TextStyle(color: Colors.white),)
-                      )
-                    ],
+                          child: Text("Edit", style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
                   ),
                   SizedBox(height: 8),
                   Row(
@@ -402,7 +411,6 @@ class _RecordsPageState extends State<RecordsPage> {
               ),
             ),
           ),
-
           SizedBox(height: 16),
 
           // 🔹 Current Medications + Chronic Conditions
@@ -530,30 +538,6 @@ class _RecordsPageState extends State<RecordsPage> {
 
           SizedBox(height: 16),
 
-          // 🔹 Immunizations
-          ExpansionTile(
-            title: Text("Immunization & Preventive Care",
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            children: [ListTile(title: Text("Vaccination records not provided"))],
-          ),
-
-          SizedBox(height: 16),
-
-          // 🔹 Other
-          ExpansionTile(
-            title: Text("Other", style: TextStyle(fontWeight: FontWeight.w600)),
-            children: [
-              ListTile(
-                title: Text("Lifestyle: Non-smoker, moderate exercise"),
-              ),
-              ListTile(
-                title: Text("Diet: Balanced, low sodium"),
-              ),
-            ],
-          ),
-
-          SizedBox(height: 24),
-
           // 🔹 Footer
           Center(
             child: Column(
@@ -625,7 +609,36 @@ class _RecordsPageState extends State<RecordsPage> {
 
                 // Two-column row for DOB & Blood group
                 Row(children: [
-                  Expanded(child: _buildField("Date of Birth (yyyy-mm-dd)", _controllers['dob']!)),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () async {
+                        DateTime initialDate;
+                        try {
+                          initialDate = DateTime.parse(_controllers['dob']!.text);
+                        } catch (_) {
+                          initialDate = DateTime(2000);
+                        }
+
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: initialDate,
+                          firstDate: DateTime(1900),
+                          lastDate: DateTime.now(),
+                        );
+
+                        if (picked != null) {
+                          setState(() {
+                            // Store as yyyy-MM-dd
+                            _controllers['dob']!.text =
+                            "${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+                          });
+                        }
+                      },
+                      child: IgnorePointer(
+                        child: _buildField("Date of Birth (yyyy-mm-dd)", _controllers['dob']!),
+                      ),
+                    ),
+                  ),
                   SizedBox(width: 12),
                   Expanded(child: _buildField("Blood Group", _controllers['bloodGroup']!)),
                 ]),
@@ -728,7 +741,7 @@ class _RecordsPageState extends State<RecordsPage> {
             icon: Icon(Icons.add, color: Colors.white),
             label: Text("Add Medical Record", style: TextStyle(color: Colors.white)),
             onPressed: () => setState(() => _isCreating = true),
-            style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14), backgroundColor: Colors.teal, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14), backgroundColor: Colors.blue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
           )
         ]),
       ),
@@ -791,89 +804,168 @@ class _RecordsPageState extends State<RecordsPage> {
     bool sugar = _record?.sugar ?? false;
 
     showDialog(
-      useSafeArea: true,
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setStateDialog) {
-            return AlertDialog(
-              title: Text("Edit Medical Info"),
-              content: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _buildDialogField("Blood Group", tempControllers['bloodGroup']!),
-                    _buildDialogField("Current Medications", tempControllers['medications']!, maxLines: 2),
-                    _buildDialogField("Chronic Conditions", tempControllers['illnesses']!, maxLines: 2),
-                    _buildDialogField("Allergies", tempControllers['allergies']!, maxLines: 2),
-                    _buildDialogField("Addiction", tempControllers['addiction']!),
-                    _buildDialogField("Emergency Contact Name", tempControllers['emergencyName']!),
-                    _buildDialogField("Emergency Contact Number", tempControllers['emergencyNumber']!),
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              insetPadding: EdgeInsets.all(16),
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 🔹 Title
+                      Center(
+                        child: Text(
+                          "📝 Edit Medical Info",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.teal[700],
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 16),
 
-                    SwitchListTile(
-                      title: Text("Smoking"),
-                      value: smoking,
-                      onChanged: (v) => setStateDialog(() => smoking = v),
-                    ),
-                    SwitchListTile(
-                      title: Text("Drinking"),
-                      value: drinking,
-                      onChanged: (v) => setStateDialog(() => drinking = v),
-                    ),
-                    SwitchListTile(
-                      title: Text("Diabetes (Sugar)"),
-                      value: sugar,
-                      onChanged: (v) => setStateDialog(() => sugar = v),
-                    ),
-                  ],
+                      // 🔹 General Info Section
+                      Text("General Info", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87)),
+                      SizedBox(height: 8),
+                      _styledField("Blood Group", tempControllers['bloodGroup']!, icon: Icons.bloodtype),
+                      _styledField("Current Medications", tempControllers['medications']!, maxLines: 2, icon: Icons.medical_services),
+                      _styledField("Chronic Conditions", tempControllers['illnesses']!, maxLines: 2, icon: Icons.health_and_safety),
+                      _styledField("Allergies", tempControllers['allergies']!, maxLines: 2, icon: Icons.warning_amber),
+                      _styledField("Addiction", tempControllers['addiction']!, icon: Icons.smoke_free),
+
+                      SizedBox(height: 16),
+
+                      // 🔹 Lifestyle
+                      Text("Lifestyle", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87)),
+                      SwitchListTile(
+                        title: Text("Smoking"),
+                        value: smoking,
+                        onChanged: (v) => setStateDialog(() => smoking = v),
+                        secondary: Icon(Icons.smoking_rooms, color: Colors.red),
+                      ),
+                      SwitchListTile(
+                        title: Text("Drinking"),
+                        value: drinking,
+                        onChanged: (v) => setStateDialog(() => drinking = v),
+                        secondary: Icon(Icons.local_bar, color: Colors.blue),
+                      ),
+                      SwitchListTile(
+                        title: Text("Diabetes (Sugar)"),
+                        value: sugar,
+                        onChanged: (v) => setStateDialog(() => sugar = v),
+                        secondary: Icon(Icons.bloodtype, color: Colors.orange),
+                      ),
+
+                      SizedBox(height: 16),
+
+                      // 🔹 Emergency Contact
+                      Text("Emergency Contact", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87)),
+                      _styledField("Contact Name", tempControllers['emergencyName']!, icon: Icons.person),
+                      _styledField("Contact Number", tempControllers['emergencyNumber']!, icon: Icons.phone),
+
+                      SizedBox(height: 20),
+
+                      // 🔹 Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              style: OutlinedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                                side: BorderSide(color: Colors.grey),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: Text("Cancel"),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                final updatedRecord = MedicalRecord(
+                                  dateOfBirth: _record?.dateOfBirth ?? "",
+                                  bloodGroup: tempControllers['bloodGroup']!.text,
+                                  pastSurgeries: _record?.pastSurgeries ?? "",
+                                  longTermMedications: tempControllers['medications']!.text,
+                                  ongoingIllnesses: tempControllers['illnesses']!.text,
+                                  allergies: tempControllers['allergies']!.text,
+                                  otherIssues: _record?.otherIssues ?? "",
+                                  emergencyContactName: tempControllers['emergencyName']!.text,
+                                  emergencyContactNumber: tempControllers['emergencyNumber']!.text,
+                                  occupation: _record?.occupation ?? "",
+                                  addiction: tempControllers['addiction']!.text,
+                                  address: _record?.address ?? "",
+                                  smoking: smoking,
+                                  drinking: drinking,
+                                  sugar: sugar,
+                                );
+
+                                bool success = await _authService.updateMedicalRecord(updatedRecord);
+                                if (success) {
+                                  setState(() => _record = updatedRecord);
+                                  Navigator.pop(ctx);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text("✅ Record updated")),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text("❌ Failed to update record")),
+                                  );
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: Text("Save", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: Text("Cancel"),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final updatedRecord = MedicalRecord(
-                      dateOfBirth: _record?.dateOfBirth ?? "",
-                      bloodGroup: tempControllers['bloodGroup']!.text,
-                      pastSurgeries: _record?.pastSurgeries ?? "",
-                      longTermMedications: tempControllers['medications']!.text,
-                      ongoingIllnesses: tempControllers['illnesses']!.text,
-                      allergies: tempControllers['allergies']!.text,
-                      otherIssues: _record?.otherIssues ?? "",
-                      emergencyContactName: tempControllers['emergencyName']!.text,
-                      emergencyContactNumber: tempControllers['emergencyNumber']!.text,
-                      occupation: _record?.occupation ?? "",
-                      addiction: tempControllers['addiction']!.text,
-                      address: _record?.address ?? "",
-                      smoking: smoking,
-                      drinking: drinking,
-                      sugar: sugar,
-                    );
-
-                    bool success = await _authService.updateMedicalRecord(updatedRecord);
-                    if (success) {
-                      setState(() => _record = updatedRecord);
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("✅ Record updated")),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("❌ Failed to update record")),
-                      );
-                    }
-                  },
-                  child: Text("Save"),
-                ),
-              ],
             );
           },
         );
       },
     );
   }
+
+  /// 🔹 Helper widget for styled text fields
+  Widget _styledField(String label, TextEditingController controller, {int maxLines = 1, IconData? icon}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: TextField(
+        controller: controller,
+        maxLines: maxLines,
+        decoration: InputDecoration(
+          prefixIcon: icon != null ? Icon(icon, color: Colors.teal) : null,
+          labelText: label,
+          filled: true,
+          fillColor: Colors.grey[100],
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.teal, width: 1.5),
+          ),
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildDialogField(String label, TextEditingController controller, {int maxLines = 1}) {
     return Padding(
