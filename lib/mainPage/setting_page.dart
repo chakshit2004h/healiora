@@ -52,37 +52,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
-
-          const SizedBox(height: 16),
-
-          // 🌍 Language Preference
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Language Preference",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: selectedLanguage,
-                    items: languages
-                        .map((lang) =>
-                        DropdownMenuItem(value: lang, child: Text(lang)))
-                        .toList(),
-                    onChanged: (val) => setState(() => selectedLanguage = val!),
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
           const SizedBox(height: 16),
 
           // 🔐 Account & Security
@@ -95,13 +64,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 children: [
                   const Text("Account & Security",
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: () {
-                      // TODO: open Change Password page
-                    },
-                    child: const Text("Change Password"),
-                  ),
                   const SizedBox(height: 12),
                   SwitchListTile(
                     value: biometricLogin,
@@ -127,7 +89,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   Text("Connected Devices",
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   SizedBox(height: 12),
-                  Text("Coming in Phase 2"),
+                  Text("Coming in Phase 1"),
                   Text("Manage your connected health devices",
                       style: TextStyle(color: Colors.grey)),
                 ],

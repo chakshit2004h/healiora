@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:healiora/main.dart';
 import 'package:healiora/doctor_side/hospital_dashboard.dart';
 
@@ -66,7 +67,7 @@ class _InputFieldState extends State<_InputField> {
 
 class _LoginState extends State<Login> {
   bool isLogin = true;
-  bool isPhoneLogin = true;
+  bool isPhoneLogin = false;
   String email = '';
   String password = '';
   String fullName = '';
@@ -89,14 +90,21 @@ class _LoginState extends State<Login> {
     try {
       final auth = AuthService();
       final success = await auth.login(email, password);
+      final storage = FlutterSecureStorage();
 
       print('🔍 Login result: $success');
 
       if (success) {
+        final token = await auth.getToken(); // implement this in AuthService
+        if (token != null) {
+          final storage = FlutterSecureStorage();
+          await storage.write(key: 'token', value: token);
+        }
         final userData = await auth.getUserData();
         print('👤 User data: $userData');
 
         if (userData != null) {
+          await storage.write(key: 'role', value: userData.role.toLowerCase());
           final fullName = userData.fullName ?? '';
           await auth.saveName(fullName);
 
@@ -112,7 +120,7 @@ class _LoginState extends State<Login> {
           }
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Login failed")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Email/Password Wrong!")));
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
@@ -349,16 +357,16 @@ class _LoginState extends State<Login> {
       children: [
         Expanded(
           child: TextButton.icon(
-            onPressed: () => setState(() => isPhoneLogin = true),
-            icon: Icon(Icons.phone, color: isPhoneLogin ? Colors.teal : Colors.grey),
-            label: Text("Phone", style: TextStyle(color: isPhoneLogin ? Colors.teal : Colors.grey)),
+            onPressed: () => setState(() => isPhoneLogin = false),
+            icon: Icon(Icons.email, color: !isPhoneLogin ? Colors.teal : Colors.grey),
+            label: Text("Email", style: TextStyle(color: !isPhoneLogin ? Colors.teal : Colors.grey)),
           ),
         ),
         Expanded(
           child: TextButton.icon(
-            onPressed: () => setState(() => isPhoneLogin = false),
-            icon: Icon(Icons.email, color: !isPhoneLogin ? Colors.teal : Colors.grey),
-            label: Text("Email", style: TextStyle(color: !isPhoneLogin ? Colors.teal : Colors.grey)),
+            onPressed: () => setState(() => isPhoneLogin = true),
+            icon: Icon(Icons.phone, color: isPhoneLogin ? Colors.teal : Colors.grey),
+            label: Text("Phone", style: TextStyle(color: isPhoneLogin ? Colors.teal : Colors.grey)),
           ),
         ),
       ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:healiora/mainPage/help.dart';
 import 'package:healiora/mainPage/login.dart';
 import 'package:healiora/mainPage/setting_page.dart';
@@ -246,7 +247,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   icon: Icons.logout,
                   title: "Sign Out",
                   subtitle: "Log out of your account",
-                  onTap: () {
+                  onTap: () async{
+                    final storage = FlutterSecureStorage();
+                    await storage.delete(key: 'token');
+                    await storage.delete(key: 'role');
                     Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => Login()));
                   },
                   isLogout: true,
