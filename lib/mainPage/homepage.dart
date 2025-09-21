@@ -10,6 +10,7 @@ import '../services/ambulance_services.dart';
 import '../services/auth_services.dart';
 import '../sidePages/emergencybutton.dart';
 import '../sidePages/user_card.dart';
+import 'hospital.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -419,38 +420,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin{
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) {
-                    return AlertDialog(
-                      title: Text('Nearby Hospitals'),
-                      content: SizedBox(
-                        width: double.maxFinite,
-                        child: _nearbyHospitals.isEmpty
-                            ? Text("No hospitals found nearby")
-                            : ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: _nearbyHospitals.length,
-                          itemBuilder: (context, index) {
-                            final hospital = _nearbyHospitals[index];
-                            return ListTile(
-                              title: Text(hospital['name'] ?? 'Unknown'),
-                              subtitle: Text(
-                                "${(hospital['distance_km'] ?? 0).toString()} km",
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(ctx).pop(),
-                          child: Text('Close'),
-                        ),
-                      ],
-                    );
-                  },
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (context) => HospitalPage()));
               },
               child: Text("View All Hospitals",style: TextStyle(color: Colors.blue),),
               style: ElevatedButton.styleFrom(

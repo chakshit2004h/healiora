@@ -54,30 +54,6 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 16),
 
-          // 🔐 Account & Security
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Account & Security",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  SwitchListTile(
-                    value: biometricLogin,
-                    onChanged: (val) => setState(() => biometricLogin = val),
-                    title: const Text("Biometric Login"),
-                    subtitle: const Text("Use fingerprint or face ID to login"),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
           // 🔗 Connected Devices
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
