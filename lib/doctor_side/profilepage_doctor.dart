@@ -113,11 +113,7 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
                         Text(doctorProfile!['specialization'] ?? "Emergency Medicine",
                             style: const TextStyle(
                                 color: Colors.black87, fontSize: 13)),
-                        Text(
-                            "${doctorProfile!['hospital'] ?? 'Fortis Hospital'}, ${doctorProfile!['location'] ?? 'Chandigarh'}",
-                            style: const TextStyle(
-                                color: Colors.black54, fontSize: 12)),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 6),
                         Row(
                           children: [
                             const Icon(Icons.email_outlined,
@@ -137,6 +133,7 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
                                 style: const TextStyle(fontSize: 13)),
                           ],
                         ),
+                        const SizedBox(height: 6),
                       ],
                     ),
                   )
@@ -146,45 +143,15 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
             const SizedBox(height: 20),
 
             _sectionTitle("Professional details"),
-            _card(_infoRow(Icons.badge_outlined, "Registration / License No.",
-                doctorProfile!['registration_number'] ?? "N/A")),
             _card(_infoRow(Icons.school_outlined, "Qualifications",
                 doctorProfile!['education'] ?? "N/A")),
             _card(_infoRow(Icons.local_hospital_outlined,
                 "Hospital / Department",
                 "${doctorProfile!['hospital'] ?? 'N/A'} / ${doctorProfile!['specialization'] ?? 'N/A'}")),
 
-            const SizedBox(height: 20),
-
-            _sectionTitle("App settings"),
-            _card(
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text("Emergency alerts",
-                            style: TextStyle(fontWeight: FontWeight.w500)),
-                        Text("Receive urgent SOS notifications",
-                            style:
-                            TextStyle(color: Colors.black54, fontSize: 12)),
-                      ]),
-                  Switch(
-                    value: emergencyAlerts,
-                    onChanged: (val) =>
-                        setState(() => emergencyAlerts = val),
-                    activeColor: Colors.blue,
-                  )
-                ],
-              ),
-            ),
-            _card(_buttonRow(Icons.language_outlined, "Language", "English")),
+            const SizedBox(height: 6),
             _card(_buttonRow(
                 Icons.lock_outline, "Change password / Security", "Manage")),
-            _card(_buttonRow(Icons.devices_other_outlined, "Linked device",
-                "Connect",
-                subtitle: "No device linked", disabled: true)),
 
             const SizedBox(height: 20),
             const Divider(thickness: 1),
