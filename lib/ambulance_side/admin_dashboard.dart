@@ -204,7 +204,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 👇 Overview cards here
-          _buildOverviewCardsRow(),
+          _overviewCard(
+            title: "SOS Alerts",
+            value: "${activeTrips.length}",   // ✅ dynamic count
+            subtitle: "Active SOS requests",
+            icon: Icons.warning_amber_rounded,
+            buttonText: "View Alerts",
+            onTap: () {
+              setState(() => _selectedIndex = 1); // Go to History tab
+            },
+          ),
+          const SizedBox(height: 16),
+
+          _overviewCard(
+            title: "Patients Overview",
+            value: "0",  // Replace with real value later
+            subtitle: "Registered patients",
+            icon: Icons.people,
+            buttonText: "View Patients",
+            onTap: () {
+              print("View Patients tapped");
+            },
+          ),
+
           const SizedBox(height: 20),
 
           const Text(
@@ -441,51 +463,65 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
   }
-  // Add overview cards row
-  Widget _buildOverviewCardsRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _overviewCard(
-          Icons.warning,
-          "SOS Alerts",
-          "${activeTrips.length}", // ✅ dynamic count
-          Colors.red.shade50,
-          Colors.red,
-        ),
-        _overviewCard(
-          Icons.people,
-          "Patients",
-          "24", // Replace with real patient count if you fetch from backend
-          Colors.blue.shade50,
-          Colors.blue,
-        ),
-      ],
-    );
-  }
-
-  static Widget _overviewCard(
-      IconData icon, String title, String count, Color bgColor, Color iconColor) {
+  Widget _overviewCard({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    String? buttonText,
+    VoidCallback? onTap,
+  }) {
     return Container(
-      width: 140,
-      padding: const EdgeInsets.all(12),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: bgColor,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 6,
+            spreadRadius: 2,
+          ),
+        ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: iconColor, size: 28),
-          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(icon, color: Colors.teal),
+              const SizedBox(width: 8),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 12),
           Text(
-            count,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            value,
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
-          Text(title, style: const TextStyle(fontSize: 12)),
+          Text(subtitle, style: const TextStyle(color: Colors.grey)),
+          if (buttonText != null) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton(
+                onPressed: onTap,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.teal.shade700),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                child: Text(buttonText),
+              ),
+            ),
+          ]
         ],
       ),
     );
   }
+
 
 }

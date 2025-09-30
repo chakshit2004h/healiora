@@ -240,12 +240,34 @@ class DashboardScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 20),
-                  const Text(
-                    "Today’s Overview",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  // Full-width overview cards instead of row
+                  _overviewCard(
+                    title: "Patients Overview",
+                    value: "0",
+                    subtitle: "Patients",
+                    buttonText: "View Patients",
+                    icon: Icons.people,
+                    onTap: () {},
                   ),
-                  const SizedBox(height: 12),
-                  _buildOverviewCardsRow(),
+                  const SizedBox(height: 16),
+
+                  _overviewCard(
+                    title: "SOS History",
+                    value: "0",
+                    subtitle: "SOS this month, +2 today",
+                    icon: Icons.warning_amber_rounded,
+                  ),
+                  const SizedBox(height: 16),
+
+                  _overviewCard(
+                    title: "Medical Records",
+                    value: "0",
+                    subtitle: "Records available",
+                    buttonText: "Open Records",
+                    icon: Icons.folder,
+                    onTap: () {},
+                  ),
+
                   const SizedBox(height: 20),
                   _buildUrgentHeader(),
                   const SizedBox(height: 12),
@@ -291,16 +313,6 @@ class DashboardScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildOverviewCardsRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _overviewCard(Icons.warning, "SOS Alerts", "${sosAlerts.length}", Colors.red.shade50, Colors.red),
-        _overviewCard(Icons.people, "Patients", "24", Colors.blue.shade50, Colors.blue),
-      ],
     );
   }
 
@@ -446,26 +458,62 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  static Widget _overviewCard(
-      IconData icon, String title, String count, Color bgColor, Color iconColor) {
+  Widget _overviewCard({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    String? buttonText,
+    VoidCallback? onTap,
+  }) {
     return Container(
-      width: 100,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        children: [
-          Icon(icon, color: iconColor, size: 28),
-          const SizedBox(height: 8),
-          Text(
-            count,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 6,
+            spreadRadius: 2,
           ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: Colors.teal),
+              const SizedBox(width: 8),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          Text(title, style: const TextStyle(fontSize: 12)),
+          Text(subtitle, style: const TextStyle(color: Colors.grey)),
+          if (buttonText != null) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: onTap,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal.shade700,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                ),
+                child: Text(buttonText,style: TextStyle(color: Colors.white),),
+              ),
+            ),
+          ]
         ],
       ),
     );
   }
+
   String getGreetingMessage() {
     final hour = DateTime.now().hour;
 
