@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_services.dart';
 
 class History extends StatefulWidget {
@@ -21,7 +22,6 @@ class _HistoryState extends State<History> {
     _initData();
   }
 
-  // Initialize ambulance ID and fetch patients
   Future<void> _initData() async {
     setState(() => isLoading = true);
 
@@ -46,7 +46,7 @@ class _HistoryState extends State<History> {
       await AuthService().getAssignedPatientsByAmbulance(ambulanceId!);
       setState(() {
         patients = result;
-        filteredPatients = patients; // Initially show all
+        filteredPatients = patients;
         isLoading = false;
       });
     } catch (e) {
@@ -55,7 +55,6 @@ class _HistoryState extends State<History> {
     }
   }
 
-  // 🔎 Filter patients based on search query
   void filterPatients(String query) {
     setState(() {
       searchQuery = query.toLowerCase();
@@ -64,6 +63,48 @@ class _HistoryState extends State<History> {
         return name.contains(searchQuery);
       }).toList();
     });
+  }
+
+  Future<void> _launchCall(String phoneNumber) async {
+    final Uri url = Uri(scheme: "tel", path: phoneNumber);
+    if (!await launchUrl(url)) {
+      throw "Could not launch call to $phoneNumber";
+    }
+  }
+
+  Future<void> _launchMaps(String address) async {
+    final Uri url = Uri.parse("https://www.google.com/maps/search/?api=1&query=$address");
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      throw "Could not open maps for $address";
+    }
+  }
+
+  Widget _buildStatusChip(String status) {
+    Color color;
+    switch (status.toLowerCase()) {
+      case "unassigned":
+        color = Colors.grey;
+        break;
+      case "assigned":
+        color = Colors.blue;
+        break;
+      case "ongoing":
+        color = Colors.black;
+        break;
+      default:
+        color = Colors.grey;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        status,
+        style: const TextStyle(color: Colors.white, fontSize: 12),
+      ),
+    );
   }
 
   @override
@@ -76,32 +117,28 @@ class _HistoryState extends State<History> {
           ? const Center(child: Text("No patients assigned"))
           : Column(
         children: [
-          // 🔎 Search Bar
+          // Search Bar
           Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
               onChanged: filterPatients,
               decoration: InputDecoration(
                 hintText: "Search by patient name...",
-                prefixIcon:
-                const Icon(Icons.search, color: Colors.blueAccent),
+                prefixIcon: const Icon(Icons.search, color: Colors.blueAccent),
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12, horizontal: 16),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(25),
                   borderSide: BorderSide.none,
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(25),
-                  borderSide: const BorderSide(
-                      color: Colors.blueAccent, width: 1),
+                  borderSide: const BorderSide(color: Colors.blueAccent, width: 1),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(25),
-                  borderSide: const BorderSide(
-                      color: Colors.blueAccent, width: 2),
+                  borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
                 ),
               ),
             ),
@@ -110,138 +147,118 @@ class _HistoryState extends State<History> {
           // Patient List
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               itemCount: filteredPatients.length,
               itemBuilder: (context, index) {
                 final patient = filteredPatients[index];
-                return Container(
-                  margin: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blueAccent.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // Header with gradient + avatar
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.blueAccent.withOpacity(0.9),
-                              Colors.lightBlueAccent.withOpacity(0.7),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(20)),
-                        ),
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
+                return Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Name + Status
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            CircleAvatar(
-                              radius: 28,
-                              backgroundColor: Colors.white,
-                              child: Text(
-                                (patient["patient_name"] != null &&
-                                    patient["patient_name"]
-                                        .isNotEmpty)
-                                    ? patient["patient_name"][0]
-                                    .toUpperCase()
-                                    : "?",
-                                style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blueAccent),
-                              ),
+                            Row(
+                              children: [
+                                const Icon(Icons.person_outline, size: 22),
+                                const SizedBox(width: 8),
+                                Text(
+                                  patient["patient_name"] ?? "Unknown",
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 14),
+                            _buildStatusChip(patient["status"] ?? "Unassigned"),
+                          ],
+                        ),
+
+                        const SizedBox(height: 6),
+                        Text(
+                          "ID: ${patient["id"] ?? "N/A"}",
+                          style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        // Address
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.location_on, size: 18, color: Colors.red),
+                            const SizedBox(width: 6),
                             Expanded(
-                              child: Text(
-                                patient["patient_name"] ?? "Unknown",
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    patient["address"] ?? "Address not available",
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => _launchMaps(patient["address"] ?? ""),
+                                    child: const Text(
+                                      "Open in Maps",
+                                      style: TextStyle(
+                                        color: Colors.blueAccent,
+                                        fontSize: 13,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  )
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      ),
 
-                      // Info Section
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                        const SizedBox(height: 12),
+
+                        // Action Buttons
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            Row(
-                              children: [
-                                Chip(
-                                  avatar: const Icon(Icons.cake,
-                                      size: 18, color: Colors.white),
-                                  label: Text(
-                                    "Age: ${patient["patient_age"] ?? "N/A"}",
-                                    style: const TextStyle(
-                                        color: Colors.white),
-                                  ),
-                                  backgroundColor: Colors
-                                      .blueAccent
-                                      .withOpacity(0.8),
+                            ElevatedButton(
+                              onPressed: () {
+                                // Accept Logic
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                const SizedBox(width: 10),
-                                Chip(
-                                  avatar: const Icon(Icons.wc,
-                                      size: 18, color: Colors.white),
-                                  label: Text(
-                                    "Gender: ${patient["patient_gender"] ?? "N/A"}",
-                                    style: const TextStyle(
-                                        color: Colors.white),
-                                  ),
-                                  backgroundColor: Colors
-                                      .green
-                                      .withOpacity(0.7),
-                                ),
-                              ],
+                              ),
+                              child: const Text("Accept",style: TextStyle(color: Colors.white),),
                             ),
-                            const SizedBox(height: 10),
-
-                            const Divider(),
-
-                            // Action Buttons
-                            Row(
-                              mainAxisAlignment:
-                              MainAxisAlignment.end,
-                              children: [
-                                TextButton.icon(
-                                  onPressed: () {
-                                    // 👉 Navigate to details page
-                                  },
-                                  icon: const Icon(Icons.info_outline,
-                                      size: 18,
-                                      color: Colors.blueAccent),
-                                  label: const Text(
-                                    "Details",
-                                    style: TextStyle(
-                                        color: Colors.blueAccent),
-                                  ),
+                            ElevatedButton(
+                              onPressed: () => _launchMaps(patient["address"] ?? ""),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                              ],
-                            )
+                              ),
+                              child: const Text("Navigate",style: TextStyle(color: Colors.white)),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () => _launchCall(patient["phone"] ?? ""),
+                              icon: const Icon(Icons.call, size: 18),
+                              label: const Text("Call"),
+                              style: OutlinedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
                           ],
-                        ),
-                      ),
-                    ],
+                        )
+                      ],
+                    ),
                   ),
                 );
               },
