@@ -200,17 +200,6 @@ class _HistoryState extends State<History> {
                                     patient["address"] ?? "Address not available",
                                     style: const TextStyle(fontSize: 14),
                                   ),
-                                  GestureDetector(
-                                    onTap: () => _launchMaps(patient["address"] ?? ""),
-                                    child: const Text(
-                                      "Open in Maps",
-                                      style: TextStyle(
-                                        color: Colors.blueAccent,
-                                        fontSize: 13,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    ),
-                                  )
                                 ],
                               ),
                             ),
