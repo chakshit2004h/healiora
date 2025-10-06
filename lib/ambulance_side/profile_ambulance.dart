@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../mainPage/login.dart';
 import '../services/auth_services.dart';
 
 class AmbulanceProfilePage extends StatefulWidget {
@@ -41,7 +42,8 @@ class _AmbulanceProfilePageState extends State<AmbulanceProfilePage> {
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: profile!.entries.map((entry) {
+          children: [
+            ...profile!.entries.map((entry) {
             return Card(
               color: Colors.white,
               margin: const EdgeInsets.symmetric(vertical: 6),
@@ -56,7 +58,30 @@ class _AmbulanceProfilePageState extends State<AmbulanceProfilePage> {
               ),
             );
           }).toList(),
-        ),
+          const SizedBox(height: 30),
+        Center(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => Login()),
+              );
+            },
+            icon: const Icon(Icons.logout, color: Colors.white),
+            label: const Text(
+              "Logout",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        )
+        ]),
       ),
     );
   }
