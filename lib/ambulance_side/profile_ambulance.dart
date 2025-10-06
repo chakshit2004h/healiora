@@ -70,10 +70,10 @@ class _AmbulanceProfilePageState extends State<AmbulanceProfilePage> {
             icon: const Icon(Icons.logout, color: Colors.white),
             label: const Text(
               "Logout",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,color: Colors.white),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
+              backgroundColor: Colors.blue,
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
