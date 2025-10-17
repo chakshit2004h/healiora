@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:open_file/open_file.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:healiora/doctor_side/patientpage_doctor.dart';
@@ -85,18 +87,18 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
     }
   }
 
-
-
   Future<void> _initSocket() async {
     try {
-      // fetch logged-in doctor
+      // Fetch logged-in doctor
       final user = await AuthService().getUserData();
-      if (user == null) {
-        print("❌ No doctor data found");
+      final token = await AuthService().getToken(); // ✅ get token
+
+      if (user == null || token == null) {
+        print("❌ No doctor data or token found");
         return;
       }
 
-      // initialize socket with doctorId (or token)
+      // Initialize socket with doctorId (or token)
       final doctorSocket = AmbulanceDoctorService(user.id.toString(), "doctor");
       await doctorSocket.init();
 
@@ -105,7 +107,7 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
         return match != null ? match.group(1)!.trim() : "Unknown Patient";
       }
 
-      // ✅ listen for hospital events
+      // ✅ Listen for hospital events
       doctorSocket.on("doctor_case_assigned", (data) async {
         print("🚨 SOS ALERT received: $data");
 
@@ -116,6 +118,7 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
             "age": data['age'] ?? "N/A",
             "condition": data['condition'] ?? "Emergency case",
             "location": data['location'] ?? "Unknown",
+            "credential_id": data['credential_id'], // ✅ store credential_id
             "time": DateTime.now(),
           });
         });
@@ -124,7 +127,12 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
         final player = AudioPlayer();
         await player.play(AssetSource("sounds/sos_alert.mp3"));
 
-        // Show dialog instead of SnackBar
+        // Build API endpoint for record download
+        String? credentialId = data['credential_id'];
+        String pdfUrl =
+            "https://healiorabackend.rawcode.online/api/v1/medical-records/by-credential/$credentialId/pdf";
+
+        // Show dialog
         showDialog(
           context: context,
           builder: (context) {
@@ -135,7 +143,7 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
               ),
               content: Text(
                 "Patient: ${extractPatientName(data['case_details']?['notes'] ?? '')}\n"
-                    "Location: ${data['location'] ?? 'Kharar'}",
+                    "Location: ${data['location'] ?? 'Unknown'}",
               ),
               actions: [
                 Row(
@@ -151,17 +159,43 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
                     ),
                     TextButton(
                       onPressed: () async {
-                        const url =
-                            "https://drive.google.com/file/d/11UuYHrIddea57yM9GOLTAhAu3XqOJK1d/view?usp=drive_link";
-                        final uri = Uri.parse(url);
+                        if (credentialId == null) {
+                          print("❌ No credential_id found in SOS data");
+                          return;
+                        }
 
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        } else {
-                          print("Could not launch $url");
+                        final uri = Uri.parse(pdfUrl);
+                        print("📄 Fetching record from: $pdfUrl");
+
+                        try {
+                          // ✅ Use HTTP GET with Authorization header
+                          final response = await http.get(
+                            uri,
+                            headers: {
+                              "Authorization": "Bearer $token",
+                              "Accept": "application/pdf",
+                            },
+                          );
+
+                          if (response.statusCode == 200) {
+                            // Save PDF temporarily
+                            final tempDir = await getTemporaryDirectory();
+                            final filePath =
+                                "${tempDir.path}/record_$credentialId.pdf";
+                            final file = File(filePath);
+                            await file.writeAsBytes(response.bodyBytes);
+
+                            // Open the PDF externally
+                            await OpenFile.open(filePath);
+                          } else {
+                            print(
+                                "❌ Failed to fetch PDF: ${response.statusCode}");
+                          }
+                        } catch (e) {
+                          print("❌ Error downloading PDF: $e");
                         }
                       },
-                      child: const Text("Download"),
+                      child: const Text("Download Record"),
                     ),
                   ],
                 )
@@ -169,13 +203,14 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
             );
           },
         );
-
       });
+
       print("✅ Doctor socket initialized for ${user.id}");
     } catch (e) {
       print("❌ Error initializing doctor socket: $e");
     }
   }
+
 
 
   @override

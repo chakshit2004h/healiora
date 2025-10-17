@@ -21,6 +21,14 @@ class _PatientpageDoctorState extends State<PatientpageDoctor> {
   Future<void> fetchPatients() async {
     try {
       final result = await AuthService().getAssignedPatients();
+
+      // ✅ Sort patients by assigned date/time (most recent first)
+      result.sort((a, b) {
+        final dateA = DateTime.tryParse(a['assignment_date'] ?? '') ?? DateTime(0);
+        final dateB = DateTime.tryParse(b['assignment_date5'] ?? '') ?? DateTime(0);
+        return dateB.compareTo(dateA); // descending order
+      });
+
       setState(() {
         patients = result;
         isLoading = false;
@@ -81,16 +89,6 @@ class _PatientpageDoctorState extends State<PatientpageDoctor> {
                           ),
                         ],
                       ),
-                      // Chip(
-                      //   label: Text(
-                      //     patient["priority_level"] ?? "Normal",
-                      //     style: const TextStyle(color: Colors.white),
-                      //   ),
-                      //   backgroundColor: (patient["priority_level"] ==
-                      //       "High")
-                      //       ? Colors.red
-                      //       : Colors.green,
-                      // ),
                     ],
                   ),
 
@@ -119,6 +117,16 @@ class _PatientpageDoctorState extends State<PatientpageDoctor> {
 
                   const SizedBox(height: 12),
 
+                  // Optional: show assigned date
+                  if (patient["assigned_at"] != null)
+                    Text(
+                      "Assigned on: ${patient["assigned_at"]}",
+                      style: const TextStyle(
+                          fontSize: 12, color: Colors.grey),
+                    ),
+
+                  const SizedBox(height: 12),
+
                   // Action Buttons
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -131,8 +139,7 @@ class _PatientpageDoctorState extends State<PatientpageDoctor> {
                             size: 18, color: Colors.blueAccent),
                         label: const Text(
                           "Details",
-                          style:
-                          TextStyle(color: Colors.blueAccent),
+                          style: TextStyle(color: Colors.blueAccent),
                         ),
                       ),
                     ],

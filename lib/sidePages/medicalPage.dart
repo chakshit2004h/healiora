@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:healiora/sidePages/user_card.dart';
+import 'package:open_file/open_file.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:open_filex/open_filex.dart';
 
 class MedicalDetailsPage extends StatefulWidget {
   final UserProfile user; // pass user data
@@ -101,7 +101,7 @@ class _MedicalDetailsPageState extends State<MedicalDetailsPage> {
             label: 'Open',
             textColor: Colors.white,
             onPressed: () async {
-              await OpenFilex.open(file.path);
+              await OpenFile.open(file.path);
             },
           ),
         ),
