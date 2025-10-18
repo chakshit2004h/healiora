@@ -1,4 +1,8 @@
+import 'dart:io';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import '../services/auth_services.dart';
 
 class PatientpageDoctor extends StatefulWidget {
@@ -25,7 +29,7 @@ class _PatientpageDoctorState extends State<PatientpageDoctor> {
       // ✅ Sort patients by assigned date/time (most recent first)
       result.sort((a, b) {
         final dateA = DateTime.tryParse(a['assignment_date'] ?? '') ?? DateTime(0);
-        final dateB = DateTime.tryParse(b['assignment_date5'] ?? '') ?? DateTime(0);
+        final dateB = DateTime.tryParse(b['assignment_date'] ?? '') ?? DateTime(0);
         return dateB.compareTo(dateA); // descending order
       });
 
@@ -132,9 +136,47 @@ class _PatientpageDoctorState extends State<PatientpageDoctor> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       TextButton.icon(
-                        onPressed: () {
-                          // 👉 Navigate to details page
+                        onPressed: () async {
+                          final credentialId = patient["patient_id"];
+                          print("credentialId ${credentialId}");
+                          if (credentialId == null) {
+                            print("❌ No credential_id found for patient");
+                            return;
+                          }
+
+                          final token = await AuthService().getToken();
+                          final uri = Uri.parse(
+                            "https://healiorabackend.rawcode.online/api/v1/medical-records/by-credential/$credentialId/pdf",
+                          );
+
+                          try {
+                            final response = await http.get(
+                              uri,
+                              headers: {
+                                "Authorization": "Bearer $token",
+                                "Accept": "application/pdf",
+                              },
+                            );
+
+                            if (response.statusCode == 200) {
+                              final tempDir = await getTemporaryDirectory();
+                              final filePath = "${tempDir.path}/record_$credentialId.pdf";
+                              final file = File(filePath);
+                              await file.writeAsBytes(response.bodyBytes);
+                              await OpenFile.open(filePath);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("Failed to download record")),
+                              );
+                            }
+                          } catch (e) {
+                            print("❌ Error downloading PDF: $e");
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Error downloading record")),
+                            );
+                          }
                         },
+
                         icon: const Icon(Icons.info_outline,
                             size: 18, color: Colors.blueAccent),
                         label: const Text(
