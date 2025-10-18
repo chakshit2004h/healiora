@@ -1,7 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:healiora/ambulance_side/active_trip.dart';
 import 'package:healiora/ambulance_side/history.dart';
 import 'package:healiora/ambulance_side/profile_ambulance.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../services/auth_services.dart';
 import 'ambulance_socket.dart';
@@ -34,7 +39,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     ];
     _loadAndInitSocket();
   }
-
+  String? credentialId;
   Future<void> _loadAndInitSocket() async {
     try {
       final profile = await AuthService().getAmbulanceProfile();
@@ -71,6 +76,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
       ambulanceService!.on("trip_update", (data) {
         print("📦 Trip Update: $data");
+        credentialId = data['patient_id'];
         if (data["status"] == "completed") {
           setState(() {
             activeTrips.removeWhere((t) => t["tripId"] == data["tripId"]);
@@ -117,10 +123,49 @@ class _AdminDashboardState extends State<AdminDashboard> {
               child: const Text("View on Map"),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // TODO: Implement Download
-                print("Download clicked for patient ${data["patientId"]}");
+              onPressed: () async {
+                if (credentialId == null) {
+                  print("❌ No credential_id found in SOS data");
+                  return;
+                }
+
+                final uri = Uri.parse(
+                    "https://healiorabackend.rawcode.online/api/v1/medical-records/by-credential/$credentialId/pdf"
+                );
+
+                print("📄 Fetching record from: $uri");
+
+                try {
+                  final token = await AuthService().getToken();
+                  final response = await http.get(
+                    uri,
+                    headers: {
+                      "Authorization": "Bearer $token",
+                      "Accept": "application/pdf",
+                    },
+                  );
+
+                  if (response.statusCode == 200) {
+                    final tempDir = await getTemporaryDirectory();
+                    final filePath = "${tempDir.path}/record_$credentialId.pdf";
+                    final file = File(filePath);
+                    await file.writeAsBytes(response.bodyBytes);
+
+                    print("PDF saved at: $filePath");
+
+                    await OpenFile.open(filePath);
+                  } else {
+                    print("Failed to fetch PDF: ${response.statusCode}");
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Failed to download record (Error ${response.statusCode})")),
+                    );
+                  }
+                } catch (e) {
+                  print("Error downloading PDF: $e");
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Error downloading PDF")),
+                  );
+                }
               },
               child: const Text("Download"),
             ),

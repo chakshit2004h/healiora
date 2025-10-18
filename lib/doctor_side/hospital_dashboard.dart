@@ -118,7 +118,7 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
             "age": data['age'] ?? "N/A",
             "condition": data['condition'] ?? "Emergency case",
             "location": data['location'] ?? "Unknown",
-            "credential_id": data['credential_id'], // ✅ store credential_id
+            "credential_id": data['patient_id'], // ✅ store credential_id
             "time": DateTime.now(),
           });
         });
@@ -128,7 +128,7 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
         await player.play(AssetSource("sounds/sos_alert.mp3"));
 
         // Build API endpoint for record download
-        String? credentialId = data['credential_id'];
+        String? credentialId = data['patient_id'];
         String pdfUrl =
             "https://healiorabackend.rawcode.online/api/v1/medical-records/by-credential/$credentialId/pdf";
 
@@ -164,11 +164,14 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
                           return;
                         }
 
-                        final uri = Uri.parse(pdfUrl);
-                        print("📄 Fetching record from: $pdfUrl");
+                        final uri = Uri.parse(
+                            "https://healiorabackend.rawcode.online/api/v1/medical-records/by-credential/$credentialId/pdf"
+                        );
+
+                        print("📄 Fetching record from: $uri");
 
                         try {
-                          // ✅ Use HTTP GET with Authorization header
+                          final token = await AuthService().getToken();
                           final response = await http.get(
                             uri,
                             headers: {
@@ -178,25 +181,30 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
                           );
 
                           if (response.statusCode == 200) {
-                            // Save PDF temporarily
                             final tempDir = await getTemporaryDirectory();
-                            final filePath =
-                                "${tempDir.path}/record_$credentialId.pdf";
+                            final filePath = "${tempDir.path}/record_$credentialId.pdf";
                             final file = File(filePath);
                             await file.writeAsBytes(response.bodyBytes);
 
-                            // Open the PDF externally
+                            print("PDF saved at: $filePath");
+
                             await OpenFile.open(filePath);
                           } else {
-                            print(
-                                "❌ Failed to fetch PDF: ${response.statusCode}");
+                            print("Failed to fetch PDF: ${response.statusCode}");
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("Failed to download record (Error ${response.statusCode})")),
+                            );
                           }
                         } catch (e) {
-                          print("❌ Error downloading PDF: $e");
+                          print("Error downloading PDF: $e");
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Error downloading PDF")),
+                          );
                         }
                       },
-                      child: const Text("Download Record"),
+                      child: const Text("Download"),
                     ),
+
                   ],
                 )
               ],
