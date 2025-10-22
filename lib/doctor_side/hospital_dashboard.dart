@@ -119,6 +119,7 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
             "condition": data['condition'] ?? "Emergency case",
             "location": data['location'] ?? "Unknown",
             "credential_id": data['patient_id'], // ✅ store credential_id
+            "notes": data['case_details']?['notes'],
             "time": DateTime.now(),
           });
         });
@@ -136,89 +137,10 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
         final player = AudioPlayer();
         await player.play(AssetSource("sounds/sos_alert.mp3"));
 
-        // Build API endpoint for record download
-        String? credentialId = data['patient_id'];
-        String pdfUrl =
-            "https://healiorabackend.rawcode.online/api/v1/medical-records/by-credential/$credentialId/pdf";
-
-        // Show dialog
-        showDialog(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              title: const Text(
-                "🚨 Emergency SOS Alert",
-                style: TextStyle(color: Colors.red),
-              ),
-              content: Text(
-                "Patient: ${extractPatientName(data['case_details']?['notes'] ?? '')}\n"
-                    "Location: ${data['location'] ?? 'Unknown'}",
-              ),
-              actions: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text("Dismiss"),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text("Diagnosed"),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        if (credentialId == null) {
-                          print("❌ No credential_id found in SOS data");
-                          return;
-                        }
-
-                        final uri = Uri.parse(
-                            "https://healiorabackend.rawcode.online/api/v1/medical-records/by-credential/$credentialId/pdf"
-                        );
-
-                        print("📄 Fetching record from: $uri");
-
-                        try {
-                          final token = await AuthService().getToken();
-                          final response = await http.get(
-                            uri,
-                            headers: {
-                              "Authorization": "Bearer $token",
-                              "Accept": "application/pdf",
-                            },
-                          );
-
-                          if (response.statusCode == 200) {
-                            final tempDir = await getTemporaryDirectory();
-                            final filePath = "${tempDir.path}/record_$credentialId.pdf";
-                            final file = File(filePath);
-                            await file.writeAsBytes(response.bodyBytes);
-
-                            print("PDF saved at: $filePath");
-
-                            await OpenFile.open(filePath);
-                          } else {
-                            print("Failed to fetch PDF: ${response.statusCode}");
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("Failed to download record (Error ${response.statusCode})")),
-                            );
-                          }
-                        } catch (e) {
-                          print("Error downloading PDF: $e");
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Error downloading PDF")),
-                          );
-                        }
-                      },
-                      child: const Text("Download"),
-                    ),
-
-                  ],
-                )
-              ],
-            );
-          },
+        await _showSosDialog(
+          credentialId: data['patient_id']?.toString(),
+          location: data['location'] ?? 'Unknown',
+          notes: data['case_details']?['notes'],
         );
       });
 
@@ -226,6 +148,91 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
     } catch (e) {
       print("❌ Error initializing doctor socket: $e");
     }
+  }
+
+  Future<void> _showSosDialog({String? credentialId, String? location, String? notes}) async {
+    String extractPatientName(String notes) {
+      final match = RegExp(r'Patient:\s*([^,]+)').firstMatch(notes);
+      return match != null ? match.group(1)!.trim() : "Unknown Patient";
+    }
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text(
+            "🚨 Emergency SOS Alert",
+            style: TextStyle(color: Colors.red),
+          ),
+          content: Text(
+            "Patient: ${extractPatientName(notes ?? '')}\n"
+                "Location: ${location ?? 'Unknown'}",
+          ),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text("Dismiss"),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text("Diagnosed"),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    if (credentialId == null) {
+                      print("❌ No credential_id available");
+                      return;
+                    }
+
+                    final uri = Uri.parse(
+                        "https://healiorabackend.rawcode.online/api/v1/medical-records/by-credential/$credentialId/pdf"
+                    );
+
+                    print("📄 Fetching record from: $uri");
+
+                    try {
+                      final token = await AuthService().getToken();
+                      final response = await http.get(
+                        uri,
+                        headers: {
+                          "Authorization": "Bearer $token",
+                          "Accept": "application/pdf",
+                        },
+                      );
+
+                      if (response.statusCode == 200) {
+                        final tempDir = await getTemporaryDirectory();
+                        final filePath = "${tempDir.path}/record_$credentialId.pdf";
+                        final file = File(filePath);
+                        await file.writeAsBytes(response.bodyBytes);
+
+                        print("PDF saved at: $filePath");
+
+                        await OpenFile.open(filePath);
+                      } else {
+                        print("Failed to fetch PDF: ${response.statusCode}");
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Failed to download record (Error ${response.statusCode})")),
+                        );
+                      }
+                    } catch (e) {
+                      print("Error downloading PDF: $e");
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Error downloading PDF")),
+                      );
+                    }
+                  },
+                  child: const Text("Download"),
+                ),
+              ],
+            )
+          ],
+        );
+      },
+    );
   }
 
 
@@ -239,7 +246,17 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      DashboardScreen(doctorName: doctorName ?? "Doctor",sosAlerts: sosAlerts,), // ✅ now safe
+      DashboardScreen(
+        doctorName: doctorName ?? "Doctor",
+        sosAlerts: sosAlerts,
+        onViewDetails: (alert) async {
+          await _showSosDialog(
+            credentialId: (alert['credential_id'] ?? AuthService.lastSosCredentialId)?.toString(),
+            location: alert['location'] ?? 'Unknown',
+            notes: alert['notes'],
+          );
+        },
+      ), // ✅ now safe
       const PatientpageDoctor(),
       const DoctorProfilePage(),
     ];
@@ -270,7 +287,8 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
 class DashboardScreen extends StatelessWidget {
   final String doctorName;
   final List<Map<String, dynamic>> sosAlerts;
-  const DashboardScreen({super.key, required this.doctorName, required this.sosAlerts});
+  final Future<void> Function(Map<String, dynamic> alert)? onViewDetails;
+  const DashboardScreen({super.key, required this.doctorName, required this.sosAlerts, this.onViewDetails});
 
   @override
   @override
@@ -393,12 +411,17 @@ class DashboardScreen extends StatelessWidget {
           alert["age"],
           alert["condition"],
           alert["time"],
+          onTap: () async {
+            if (onViewDetails != null) {
+              await onViewDetails!(alert);
+            }
+          },
         );
       }).toList(),
     );
   }
 
-  Widget _buildUrgentAlertCard(String name, String age, String condition, DateTime time) {
+  Widget _buildUrgentAlertCard(String name, String age, String condition, DateTime time, {VoidCallback? onTap}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -448,7 +471,7 @@ class DashboardScreen extends StatelessWidget {
                 backgroundColor: Colors.green,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              onPressed: () {},
+              onPressed: onTap,
               child: const Text("View Details", style: TextStyle(color: Colors.white)),
             ),
           ),
