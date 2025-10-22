@@ -266,7 +266,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             value: "0",  // Replace with real value later
             subtitle: "Registered patients",
             icon: Icons.people,
-            buttonText: "View Patients",
+            //buttonText: "View Patients",
             onTap: () {
               print("View Patients tapped");
             },

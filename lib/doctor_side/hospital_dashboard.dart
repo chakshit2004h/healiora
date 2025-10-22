@@ -99,8 +99,13 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
       }
 
       // Initialize socket with doctorId (or token)
-      final doctorSocket = AmbulanceDoctorService(user.id.toString(), "doctor");
+      doctorSocket = AmbulanceDoctorService(user.id.toString(), "doctor");
       await doctorSocket.init();
+
+      // Debug: log any incoming event so we can verify the event name
+      doctorSocket.onAny((event, payload) {
+        print('📡 Socket event: ' + event + ' => ' + payload.toString());
+      });
 
       String extractPatientName(String notes) {
         final match = RegExp(r'Patient:\s*([^,]+)').firstMatch(notes);
