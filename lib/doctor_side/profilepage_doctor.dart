@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:healiora/mainPage/login.dart';
-
+import 'dart:convert';
 import '../services/auth_services.dart';
 
 class DoctorProfilePage extends StatefulWidget {
@@ -30,6 +31,388 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
       });
     }
   }
+
+  Future<void> _showPasswordChangeDialog() async {
+    final oldController = TextEditingController();
+    final newController = TextEditingController();
+    final confirmController = TextEditingController();
+    final codeController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
+    bool isCodeSent = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return Dialog(
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 12,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.8,
+                    ),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Form(
+                        key: formKey,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              "Change Password",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blueAccent,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+
+                            if (!isCodeSent) ...[
+                              TextFormField(
+                                controller: oldController,
+                                obscureText: true,
+                                decoration: InputDecoration(
+                                  labelText: "Current Password",
+                                  prefixIcon: const Icon(Icons.lock_outline),
+                                  filled: true,
+                                  fillColor: Colors.grey.shade100,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                validator: (v) => v == null || v.isEmpty
+                                    ? "Please enter your current password"
+                                    : null,
+                              ),
+                              const SizedBox(height: 14),
+
+                              TextFormField(
+                                controller: newController,
+                                obscureText: true,
+                                decoration: InputDecoration(
+                                  labelText: "New Password",
+                                  prefixIcon: const Icon(Icons.lock),
+                                  filled: true,
+                                  fillColor: Colors.grey.shade100,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                validator: (v) => v == null || v.length < 6
+                                    ? "Password must be at least 6 characters"
+                                    : null,
+                              ),
+                              const SizedBox(height: 14),
+
+                              TextFormField(
+                                controller: confirmController,
+                                obscureText: true,
+                                decoration: InputDecoration(
+                                  labelText: "Confirm Password",
+                                  prefixIcon:
+                                  const Icon(Icons.lock_person_outlined),
+                                  filled: true,
+                                  fillColor: Colors.grey.shade100,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                validator: (v) => v != newController.text
+                                    ? "Passwords do not match"
+                                    : null,
+                              ),
+                              const SizedBox(height: 10),
+
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border:
+                                  Border.all(color: Colors.blue.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.info_outline,
+                                        color: Colors.blue.shade700, size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        "A verification code will be sent to your registered email address",
+                                        style: TextStyle(
+                                          color: Colors.blue.shade700,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ] else ...[
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border:
+                                  Border.all(color: Colors.green.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.email_outlined,
+                                        color: Colors.green.shade700, size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        "Verification code sent to ${doctorProfile?['email'] ?? 'your email'}",
+                                        style: TextStyle(
+                                          color: Colors.green.shade700,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              TextFormField(
+                                controller: codeController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: "Enter Verification Code",
+                                  prefixIcon:
+                                  const Icon(Icons.verified_user_outlined),
+                                  filled: true,
+                                  fillColor: Colors.grey.shade100,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  hintText: "Enter 6-digit code",
+                                ),
+                                validator: (v) => v == null || v.isEmpty
+                                    ? "Please enter the verification code"
+                                    : v.length < 4
+                                    ? "Please enter a valid code"
+                                    : null,
+                              ),
+                              const SizedBox(height: 12),
+                              TextButton(
+                                onPressed: isSubmitting
+                                    ? null
+                                    : () async {
+                                  setStateDialog(() => isSubmitting = true);
+                                  try {
+                                    final success = await AuthService()
+                                        .requestPasswordChange(
+                                      currentPassword:
+                                      oldController.text.trim(),
+                                      newPassword:
+                                      newController.text.trim(),
+                                      confirmPassword:
+                                      confirmController.text.trim(),
+                                    );
+
+                                    if (success) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              "Verification code resent!"),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            "Error resending code: $e"),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  } finally {
+                                    setStateDialog(
+                                            () => isSubmitting = false);
+                                  }
+                                },
+                                child: const Text("Resend Code"),
+                              ),
+                            ],
+
+                            const SizedBox(height: 24),
+
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton(
+                                  onPressed: isSubmitting
+                                      ? null
+                                      : () => Navigator.pop(context),
+                                  child: const Text(
+                                    "Cancel",
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ElevatedButton(
+                                  onPressed: isSubmitting
+                                      ? null
+                                      : () async {
+                                    if (!isCodeSent) {
+                                      if (!formKey.currentState!
+                                          .validate()) return;
+                                      setStateDialog(
+                                              () => isSubmitting = true);
+
+                                      try {
+                                        final success = await AuthService()
+                                            .requestPasswordChange(
+                                          currentPassword:
+                                          oldController.text.trim(),
+                                          newPassword:
+                                          newController.text.trim(),
+                                          confirmPassword:
+                                          confirmController.text.trim(),
+                                        );
+
+                                        if (success) {
+                                          setStateDialog(() {
+                                            isCodeSent = true;
+                                            isSubmitting = false;
+                                          });
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                  "Verification code sent to your email!"),
+                                              backgroundColor: Colors.green,
+                                            ),
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                  "Failed to send verification code."),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                          setStateDialog(() =>
+                                          isSubmitting = false);
+                                        }
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text("Error: $e"),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                        setStateDialog(
+                                                () => isSubmitting = false);
+                                      }
+                                    } else {
+                                      if (!formKey.currentState!
+                                          .validate()) return;
+                                      setStateDialog(
+                                              () => isSubmitting = true);
+
+                                      try {
+                                        final success = await AuthService()
+                                            .verifyPasswordChangeCode(
+                                          code: codeController.text.trim(),
+                                        );
+
+                                        if (success) {
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              backgroundColor:
+                                              Colors.green,
+                                              content: Text(
+                                                  "Password changed successfully!"),
+                                            ),
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                  "Invalid verification code."),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                          setStateDialog(() =>
+                                          isSubmitting = false);
+                                        }
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text("Error: $e"),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                        setStateDialog(
+                                                () => isSubmitting = false);
+                                      }
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blueAccent,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 10),
+                                  ),
+                                  child: isSubmitting
+                                      ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                      : Text(
+                                    isCodeSent
+                                        ? "Verify & Update"
+                                        : "Send Code",
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -67,11 +450,16 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
             /// Profile Card
             Card(
               color: Colors.white,
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              shadowColor: Colors.blueAccent.withOpacity(0.1),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Padding(
-                    padding: EdgeInsets.only(left: 8.0),
+                    padding: EdgeInsets.only(left: 8.0, top: 10),
                     child: CircleAvatar(
                       radius: 28,
                       backgroundImage: AssetImage("assets/doctor.png"),
@@ -79,62 +467,66 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              "${doctorProfile!['name'] ?? 'Unknown'}",
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 16),
-                            ),
-                            const SizedBox(width: 6),
-                            if (doctorProfile!['verified'] == true)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.shade50,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Text(
-                                  "Verified",
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.w500,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                "${doctorProfile!['name'] ?? 'Unknown'}",
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                              const SizedBox(width: 6),
+                              if (doctorProfile!['verified'] == true)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade50,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Text(
+                                    "Verified",
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.blue,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(doctorProfile!['specialization'] ?? "Emergency Medicine",
-                            style: const TextStyle(
-                                color: Colors.black87, fontSize: 13)),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            const Icon(Icons.email_outlined,
-                                size: 16, color: Colors.black54),
-                            const SizedBox(width: 6),
-                            Text(doctorProfile!['email'] ?? "N/A",
-                                style: const TextStyle(fontSize: 13)),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            const Icon(Icons.phone_outlined,
-                                size: 16, color: Colors.black54),
-                            const SizedBox(width: 6),
-                            Text(doctorProfile!['phone_number'] ?? "N/A",
-                                style: const TextStyle(fontSize: 13)),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                      ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                              doctorProfile!['specialization'] ??
+                                  "Emergency Medicine",
+                              style: const TextStyle(
+                                  color: Colors.black87, fontSize: 13)),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(Icons.email_outlined,
+                                  size: 16, color: Colors.black54),
+                              const SizedBox(width: 6),
+                              Text(doctorProfile!['email'] ?? "N/A",
+                                  style: const TextStyle(fontSize: 13)),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(Icons.phone_outlined,
+                                  size: 16, color: Colors.black54),
+                              const SizedBox(width: 6),
+                              Text(doctorProfile!['phone_number'] ?? "N/A",
+                                  style: const TextStyle(fontSize: 13)),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   )
                 ],
@@ -150,19 +542,26 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
                 "${doctorProfile!['hospital'] ?? 'N/A'} / ${doctorProfile!['specialization'] ?? 'N/A'}")),
 
             const SizedBox(height: 6),
-            _card(_buttonRow(
-                Icons.lock_outline, "Change password / Security", "Manage")),
+            _card(
+              InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: _showPasswordChangeDialog,
+                child: _buttonRow(
+                    Icons.lock_outline, "Change password / Security", "Manage"),
+              ),
+            ),
 
             const SizedBox(height: 20),
             const Divider(thickness: 1),
             Center(
               child: TextButton(
                 onPressed: () {
-                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => Login()));
+                  Navigator.pushReplacement(context,
+                      MaterialPageRoute(builder: (context) =>Login()));
                 },
                 child: const Text("Logout",
-                    style:
-                    TextStyle(color: Colors.red, fontWeight: FontWeight.w500)),
+                    style: TextStyle(
+                        color: Colors.red, fontWeight: FontWeight.w500)),
               ),
             ),
           ],
@@ -238,8 +637,8 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
                 const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
             if (subtitle != null)
               Text(subtitle,
-                  style: const TextStyle(
-                      color: Colors.black54, fontSize: 12)),
+                  style:
+                  const TextStyle(color: Colors.black54, fontSize: 12)),
           ]),
         ]),
         Container(
@@ -259,16 +658,6 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
             ),
           ),
         )
-      ],
-    );
-  }
-
-  Widget _simpleRow(IconData icon, String title) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: Colors.black54),
-        const SizedBox(width: 10),
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
       ],
     );
   }

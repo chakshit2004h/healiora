@@ -9,6 +9,9 @@ class AuthService {
   final _storage = FlutterSecureStorage();
   final String baseUrl = 'https://healiorabackend.rawcode.online/api/v1';
 
+  // Simple cache to bridge IDs coming from SOS socket
+  static String? lastSosCredentialId;
+
   Future<bool> login(String email, String password) async {
     final url = Uri.parse('$baseUrl/users/credential/login');
     final response = await http.post(
@@ -266,12 +269,189 @@ class AuthService {
 
     if (response.statusCode == 200) {
       final List<dynamic>data = json.decode(response.body);
-
       // Optionally, filter by ambulanceId if backend returns ambulance info
       // For now, just return the same list
       return data;
     } else {
       throw Exception("Failed to fetch patients for ambulance");
+    }
+  }
+
+  // Update patient profile using the API endpoint
+  Future<bool> updateProfile({
+    required String fullName,
+    required String phoneNumber,
+    required String email,
+    required int age,
+    required String gender,
+  }) async {
+    final token = await getToken();
+    if (token == null) throw Exception("No token found");
+
+    final url = Uri.parse('$baseUrl/patients/patients/update-profile');
+    
+    final body = jsonEncode({
+      'full_name': fullName,
+      'phone_number': phoneNumber,
+      'email': email,
+      'age': age,
+      'gender': gender,
+    });
+
+    try {
+      final response = await http.put(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: body,
+      );
+
+      print('🔁 Update Profile Response: ${response.statusCode} | ${response.body}');
+
+      if (response.statusCode == 200) {
+        // Update local storage with new name
+        await _storage.write(key: 'user_name', value: fullName);
+        return true;
+      } else {
+        print('❌ Update Profile Error: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Update Profile Exception: $e');
+      return false;
+    }
+  }
+
+  // Fetch patient's credential id by patient id
+  Future<String?> getPatientCredentialIdById(String patientId) async {
+    final token = await getToken();
+    if (token == null) throw Exception("No token found");
+
+    final url = Uri.parse('$baseUrl/patients/patients/me/$patientId');
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        // Debug: print response to help identify correct field
+        // ignore: avoid_print
+        print('ℹ️ getPatientCredentialIdById($patientId) payload: ' + response.body.toString());
+
+        dynamic cred;
+        // Try direct keys
+        cred = data['credential_id'] ?? data['patient_credential_id'] ?? data['patient_credential'] ?? data['credentialId'];
+        // Try nested structures
+        cred ??= (data['credential'] is Map) ? (data['credential']['id'] ?? data['credential']['credential_id']) : null;
+        cred ??= (data['patient'] is Map)
+            ? (data['patient']['credential_id'] ??
+                data['patient']['credentialId'] ??
+                (data['patient']['credential'] is Map
+                    ? (data['patient']['credential']['id'] ?? data['patient']['credential']['credential_id'])
+                    : null))
+            : null;
+        // Sometimes APIs wrap the patient under 'data'
+        if (cred == null && data['data'] is Map) {
+          final Map<String, dynamic> d = data['data'];
+          cred = d['credential_id'] ?? d['patient_credential_id'] ?? d['credentialId'] ??
+              (d['credential'] is Map ? (d['credential']['id'] ?? d['credential']['credential_id']) : null);
+        }
+
+        if (cred == null) return null;
+        return cred.toString();
+      } else {
+        print('❌ getPatientCredentialIdById error: ${response.statusCode} | ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ getPatientCredentialIdById exception: $e');
+      return null;
+    }
+  }
+
+  // Request password change for doctor (sends email code)
+  Future<bool> requestPasswordChange({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final token = await getToken();
+    if (token == null) throw Exception("No token found");
+
+    final url = Uri.parse('$baseUrl/doctors/doctors/request-password-change');
+    
+    final body = jsonEncode({
+      'current_password': currentPassword,
+      'new_password': newPassword,
+      'confirm_password': confirmPassword,
+    });
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: body,
+      );
+
+      print('🔁 Request Password Change Response: ${response.statusCode} | ${response.body}');
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print('❌ Request Password Change Error: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Request Password Change Exception: $e');
+      return false;
+    }
+  }
+
+  // Verify email code and complete password change
+  Future<bool> verifyPasswordChangeCode({
+    required String code,
+  }) async {
+    final token = await getToken();
+    if (token == null) throw Exception("No token found");
+
+    final url = Uri.parse('$baseUrl/doctors/doctors/change-password');
+    
+    final body = jsonEncode({
+      'verification_code': code,
+    });
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: body,
+      );
+
+      print('🔁 Verify Password Change Code Response: ${response.statusCode} | ${response.body}');
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print('❌ Verify Password Change Code Error: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Verify Password Change Code Exception: $e');
+      return false;
     }
   }
 

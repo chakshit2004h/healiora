@@ -123,6 +123,15 @@ class _HospitalDashboardState extends State<HospitalDashboard> {
           });
         });
 
+        // Cache latest SOS credential id for other pages to consume as fallback
+        try {
+          final dynamic cred = data['credential_id'] ?? data['patient_id'] ?? data['patient_credential_id'];
+          if (cred != null) {
+            AuthService.lastSosCredentialId = cred.toString();
+            print('ℹ️ Cached lastSosCredentialId=${AuthService.lastSosCredentialId}');
+          }
+        } catch (_) {}
+
         // ✅ Play SOS sound
         final player = AudioPlayer();
         await player.play(AssetSource("sounds/sos_alert.mp3"));
@@ -290,7 +299,9 @@ class DashboardScreen extends StatelessWidget {
                     subtitle: "Patients",
                     buttonText: "View Patients",
                     icon: Icons.people,
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => PatientpageDoctor()));
+                    },
                   ),
                   const SizedBox(height: 16),
 
@@ -300,17 +311,6 @@ class DashboardScreen extends StatelessWidget {
                     subtitle: "SOS this month, +2 today",
                     icon: Icons.warning_amber_rounded,
                   ),
-                  const SizedBox(height: 16),
-
-                  _overviewCard(
-                    title: "Medical Records",
-                    value: "0",
-                    subtitle: "Records available",
-                    buttonText: "Open Records",
-                    icon: Icons.folder,
-                    onTap: () {},
-                  ),
-
                   const SizedBox(height: 20),
                   _buildUrgentHeader(),
                   const SizedBox(height: 12),

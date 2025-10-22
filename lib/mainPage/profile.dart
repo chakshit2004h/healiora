@@ -181,18 +181,70 @@ class _ProfilePageState extends State<ProfilePage> {
                                         child: const Text("Cancel"),
                                       ),
                                       ElevatedButton(
-                                        onPressed: () {
-                                          // ✅ create updated user object
-                                          final updated = UserProfile(
-                                            fullName: nameController.text,
-                                            phoneNumber: phoneController.text,
-                                            email: emailController.text,
-                                            age: user.age,
-                                            gender: gender,
-                                            role: user.role,
-                                            id: user.id,
+                                        onPressed: () async {
+                                          // Show loading indicator
+                                          showDialog(
+                                            context: context,
+                                            barrierDismissible: false,
+                                            builder: (context) => const Center(
+                                              child: CircularProgressIndicator(),
+                                            ),
                                           );
-                                          Navigator.pop(context, updated);
+
+                                          try {
+                                            // Call API to update profile
+                                            final success = await AuthService().updateProfile(
+                                              fullName: nameController.text,
+                                              phoneNumber: phoneController.text,
+                                              email: emailController.text,
+                                              age: int.tryParse(ageController.text) ?? (user.age is int ? user.age as int : int.tryParse(user.age.toString()) ?? 0),
+                                              gender: gender,
+                                            );
+
+                                            // Close loading dialog
+                                            Navigator.pop(context);
+
+                                            if (success) {
+                                              // Show success message
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text("Profile updated successfully!"),
+                                                  backgroundColor: Colors.green,
+                                                ),
+                                              );
+
+                                              // Create updated user profile
+                                              final updated = UserProfile(
+                                                fullName: nameController.text,
+                                                phoneNumber: phoneController.text,
+                                                email: emailController.text,
+                                                age: ageController.text,
+                                                gender: gender,
+                                                role: user.role,
+                                                id: user.id,
+                                              );
+                                              Navigator.pop(context, updated);
+                                            } else {
+                                              // Show error message
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text("Failed to update profile. Please try again."),
+                                                  backgroundColor: Colors.red,
+                                                ),
+                                              );
+                                            }
+                                          } catch (e) {
+                                            // Close loading dialog
+                                            Navigator.pop(context);
+
+                                            // Show error message
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text("Error: $e"),
+                                                backgroundColor: Colors.red,
+                                              ),
+                                            );
+                                          }
                                         },
                                         child: const Text("Save Changes"),
                                       ),
@@ -202,9 +254,9 @@ class _ProfilePageState extends State<ProfilePage> {
                               );
 
                               if (updatedUser != null) {
-                                // ✅ refresh state with updated user
+                                // ✅ refresh state with updated user data from API
                                 setState(() {
-                                  _userFuture = Future.value(updatedUser);
+                                  _userFuture = AuthService().getUserData();
                                 });
                               }
                             },

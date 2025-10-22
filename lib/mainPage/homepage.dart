@@ -522,9 +522,9 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin{
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildActionItem(Icons.qr_code, "Share Profile QR"),
+              _buildActionItem(Icons.qr_code, "Share Profile QR",comingSoon: true),
               _buildActionItem(Icons.shield_outlined, "View Insurance", comingSoon: true),
-              _buildActionItem(Icons.insert_drive_file, "Link Health Records"),
+              _buildActionItem(Icons.insert_drive_file, "Link Health Records",comingSoon: true),
             ],
           )
         ],
