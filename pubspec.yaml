@@ -51,6 +51,11 @@ dependencies:
   audioplayers: ^6.5.1
   shared_preferences: ^2.5.3
   open_file: ^3.5.10
+  flutter_launcher_icons: ^0.14.4
+flutter_icons:
+  image_path: "assets/images/logo.jpg"
+  android: true
+  ios: true
 
 dev_dependencies:
   flutter_test:
